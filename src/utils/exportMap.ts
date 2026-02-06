@@ -32,6 +32,11 @@ async function svgToImage(svgElement: SVGSVGElement): Promise<string> {
   clonedSvg.setAttribute('width', String(GAME_BOARD_WIDTH));
   clonedSvg.setAttribute('height', String(GAME_BOARD_HEIGHT));
   
+  // Remove port handles (circular dragging icons) from export
+  clonedSvg.querySelectorAll('.port-handle').forEach((el) => {
+    el.remove();
+  });
+  
   // Convert all <image> elements to use data URLs
   const imageElements = clonedSvg.querySelectorAll('image');
   for (const imgEl of imageElements) {
