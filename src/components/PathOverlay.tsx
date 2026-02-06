@@ -601,11 +601,11 @@ function MovementIcon({
           />
         </>
       ) : (
-        <rect
-          x={offsetX - innerBorderWidth / 2}
-          y={offsetY - innerBorderWidth / 2}
-          width={size + innerBorderWidth}
-          height={size + innerBorderWidth}
+        <path
+          d={`M ${offsetX - innerBorderWidth / 2} ${offsetY - innerBorderWidth / 2} 
+              L ${offsetX - innerBorderWidth / 2 + size + innerBorderWidth} ${offsetY - innerBorderWidth / 2} 
+              L ${offsetX - innerBorderWidth / 2 + size + innerBorderWidth} ${offsetY - innerBorderWidth / 2 + size + innerBorderWidth} 
+              L ${offsetX - innerBorderWidth / 2} ${offsetY - innerBorderWidth / 2 + size + innerBorderWidth} Z`}
           fill="none"
           stroke={color}
           strokeWidth={innerBorderWidth}
@@ -654,12 +654,16 @@ function MovementIconOutline({
     );
   }
 
+  const outlineX = offsetX - innerBorderWidth / 2 - outlineWidth;
+  const outlineY = offsetY - innerBorderWidth / 2 - outlineWidth;
+  const outlineSize = totalSize + outlineWidth * 2;
+
   return (
-    <rect
-      x={x - totalSize / 2 - outlineWidth}
-      y={y - totalSize / 2 - outlineWidth}
-      width={totalSize + outlineWidth * 2}
-      height={totalSize + outlineWidth * 2}
+    <path
+      d={`M ${outlineX} ${outlineY} 
+          L ${outlineX + outlineSize} ${outlineY} 
+          L ${outlineX + outlineSize} ${outlineY + outlineSize} 
+          L ${outlineX} ${outlineY + outlineSize} Z`}
       fill="none"
       stroke="#000"
       strokeWidth={outlineWidth * 2}
