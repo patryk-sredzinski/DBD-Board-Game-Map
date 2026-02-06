@@ -1,27 +1,61 @@
 import html2canvas from 'html2canvas';
 import { GAME_BOARD_WIDTH, GAME_BOARD_HEIGHT } from '../types';
 
+// Convert an image URL to a data URL
+async function imageToDataUrl(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      } else {
+        reject(new Error('Could not get canvas context'));
+      }
+    };
+    img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
+    img.src = url;
+  });
+}
+
 // Convert SVG element to an image data URL
 async function svgToImage(svgElement: SVGSVGElement): Promise<string> {
+  // Clone SVG and inline all styles
+  const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement;
+  
+  // Set explicit dimensions
+  clonedSvg.setAttribute('width', String(GAME_BOARD_WIDTH));
+  clonedSvg.setAttribute('height', String(GAME_BOARD_HEIGHT));
+  
+  // Convert all <image> elements to use data URLs
+  const imageElements = clonedSvg.querySelectorAll('image');
+  for (const imgEl of imageElements) {
+    const href = imgEl.getAttribute('href') || imgEl.getAttributeNS('http://www.w3.org/1999/xlink', 'href');
+    if (href && !href.startsWith('data:')) {
+      try {
+        const dataUrl = await imageToDataUrl(href);
+        imgEl.setAttribute('href', dataUrl);
+        imgEl.removeAttributeNS('http://www.w3.org/1999/xlink', 'href');
+      } catch (err) {
+        console.warn('Failed to convert image to data URL:', href, err);
+      }
+    }
+  }
+  
+  // Serialize SVG to string
+  const serializer = new XMLSerializer();
+  const svgString = serializer.serializeToString(clonedSvg);
+  
+  // Create blob and load as image
+  const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(svgBlob);
+  
   return new Promise((resolve, reject) => {
-    // Clone SVG and inline all styles
-    const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement;
-    
-    // Set explicit dimensions
-    clonedSvg.setAttribute('width', String(GAME_BOARD_WIDTH));
-    clonedSvg.setAttribute('height', String(GAME_BOARD_HEIGHT));
-    
-    // Serialize SVG to string
-    const serializer = new XMLSerializer();
-    let svgString = serializer.serializeToString(clonedSvg);
-    
-    // Fix any href attributes for images inside SVG
-    svgString = svgString.replace(/href="/g, 'xlink:href="');
-    
-    // Create blob and load as image
-    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(svgBlob);
-    
     const img = new Image();
     img.onload = () => {
       // Draw to canvas to get data URL
