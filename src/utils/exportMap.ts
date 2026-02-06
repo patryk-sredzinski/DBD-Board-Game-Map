@@ -1,7 +1,7 @@
 import html2canvas from 'html2canvas';
-import { MAP_WIDTH, MAP_HEIGHT } from '../types';
+import { GAME_BOARD_WIDTH, GAME_BOARD_HEIGHT } from '../types';
 
-export async function exportMapAsImage(element: HTMLElement): Promise<void> {
+export async function exportGameBoardAsImage(element: HTMLElement): Promise<void> {
   // Wait for fonts to be loaded
   await document.fonts.ready;
 
@@ -14,8 +14,20 @@ export async function exportMapAsImage(element: HTMLElement): Promise<void> {
   clone.style.top = '-9999px';
   clone.style.transform = 'none';
   clone.style.transformOrigin = 'top left';
-  clone.style.width = `${MAP_WIDTH}px`;
-  clone.style.height = `${MAP_HEIGHT}px`;
+  clone.style.width = `${GAME_BOARD_WIDTH}px`;
+  clone.style.height = `${GAME_BOARD_HEIGHT}px`;
+  
+  // Hide port handles for export
+  clone.querySelectorAll('.port-handle').forEach((el) => {
+    (el as HTMLElement).style.display = 'none';
+  });
+  
+  // Adjust background to extend under the top bar for seamless rendering
+  const bgImage = clone.querySelector('.game-board-background') as HTMLElement;
+  if (bgImage) {
+    bgImage.style.top = '0';
+    bgImage.style.height = '100%';
+  }
   
   document.body.appendChild(clone);
 
@@ -24,8 +36,8 @@ export async function exportMapAsImage(element: HTMLElement): Promise<void> {
 
   try {
     const canvas = await html2canvas(clone, {
-      width: MAP_WIDTH,
-      height: MAP_HEIGHT,
+      width: GAME_BOARD_WIDTH,
+      height: GAME_BOARD_HEIGHT,
       scale: 1,
       useCORS: true,
       allowTaint: true,
@@ -40,7 +52,7 @@ export async function exportMapAsImage(element: HTMLElement): Promise<void> {
       }
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.download = 'dbd-board-game-map.png';
+      link.download = 'dbd-game-board.png';
       link.href = url;
       document.body.appendChild(link);
       link.click();

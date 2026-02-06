@@ -1,51 +1,54 @@
 import { forwardRef, useEffect, useState, useRef, useCallback } from 'react';
-import { LocationData, PathConnection, MAP_WIDTH, MAP_HEIGHT } from '../types';
+import { RoomData, PathConnection, GAME_BOARD_WIDTH, GAME_BOARD_HEIGHT, TOP_BAR_HEIGHT } from '../types';
 import { useI18n } from '../i18n';
-import { LocationTile } from './LocationTile';
+import { RoomTile } from './LocationTile';
 import { PathOverlay } from './PathOverlay';
+import topBarImage from '../assets/top-bar.png';
 
-interface MapViewProps {
+interface GameBoardViewProps {
   backgroundImage: string | null;
-  locations: LocationData[];
+  rooms: RoomData[];
   paths: PathConnection[];
   connectingFrom: string | null;
   editingNameId: string | null;
   draggingId: string | null;
-  onMapContextMenu: (screenX: number, screenY: number, mapX: number, mapY: number) => void;
-  onLocationContextMenu: (screenX: number, screenY: number, locationId: string) => void;
+  onGameBoardContextMenu: (screenX: number, screenY: number, boardX: number, boardY: number) => void;
+  onRoomContextMenu: (screenX: number, screenY: number, roomId: string) => void;
   onPathContextMenu: (screenX: number, screenY: number, pathId: string) => void;
-  onLocationMouseDown: (e: React.MouseEvent, locationId: string) => void;
-  onPathMidMouseDown: (e: React.MouseEvent, pathId: string, midX: number, midY: number) => void;
-  onNameClick: (locationId: string) => void;
-  onNameChange: (locationId: string, name: string) => void;
+  onRoomMouseDown: (e: React.MouseEvent, roomId: string) => void;
+  onIconMouseDown: (e: React.MouseEvent, pathId: string) => void;
+  onPortMouseDown: (e: React.MouseEvent, pathId: string, portType: 'exit' | 'entry') => void;
+  onNameClick: (roomId: string) => void;
+  onNameChange: (roomId: string, name: string) => void;
   onNameBlur: () => void;
-  onTileClick: (locationId: string, e: React.MouseEvent) => void;
+  onRoomClick: (roomId: string, e: React.MouseEvent) => void;
   /** Expose the scale so parent can convert coordinates */
   scaleRef: React.MutableRefObject<number>;
-  /** Expose the map container rect getter */
-  getMapRect: React.MutableRefObject<(() => DOMRect | null) | null>;
+  /** Expose the game board container rect getter */
+  getGameBoardRect: React.MutableRefObject<(() => DOMRect | null) | null>;
 }
 
-export const MapView = forwardRef<HTMLDivElement, MapViewProps>(
+export const GameBoardView = forwardRef<HTMLDivElement, GameBoardViewProps>(
   (
     {
       backgroundImage,
-      locations,
+      rooms,
       paths,
       connectingFrom,
       editingNameId,
       draggingId,
-      onMapContextMenu,
-      onLocationContextMenu,
+      onGameBoardContextMenu,
+      onRoomContextMenu,
       onPathContextMenu,
-      onLocationMouseDown,
-      onPathMidMouseDown,
+      onRoomMouseDown,
+      onIconMouseDown,
+      onPortMouseDown,
       onNameClick,
       onNameChange,
       onNameBlur,
-      onTileClick,
+      onRoomClick,
       scaleRef,
-      getMapRect,
+      getGameBoardRect,
     },
     ref
   ) => {
@@ -57,8 +60,8 @@ export const MapView = forwardRef<HTMLDivElement, MapViewProps>(
     const updateScale = useCallback(() => {
       if (viewportRef.current) {
         const rect = viewportRef.current.getBoundingClientRect();
-        const scaleX = rect.width / MAP_WIDTH;
-        const scaleY = rect.height / MAP_HEIGHT;
+        const scaleX = rect.width / GAME_BOARD_WIDTH;
+        const scaleY = rect.height / GAME_BOARD_HEIGHT;
         const s = Math.min(scaleX, scaleY) * 0.95;
         setScale(s);
         scaleRef.current = s;
@@ -71,38 +74,38 @@ export const MapView = forwardRef<HTMLDivElement, MapViewProps>(
       return () => window.removeEventListener('resize', updateScale);
     }, [updateScale]);
 
-    // Expose map rect getter to parent
+    // Expose game board rect getter to parent
     useEffect(() => {
-      getMapRect.current = () => innerRef.current?.getBoundingClientRect() ?? null;
-    }, [getMapRect]);
+      getGameBoardRect.current = () => innerRef.current?.getBoundingClientRect() ?? null;
+    }, [getGameBoardRect]);
 
     const handleContextMenu = useCallback(
       (e: React.MouseEvent) => {
         e.preventDefault();
-        // Convert to map coordinates
+        // Convert to game board coordinates
         if (innerRef.current) {
           const rect = innerRef.current.getBoundingClientRect();
-          const mapX = (e.clientX - rect.left) / scale;
-          const mapY = (e.clientY - rect.top) / scale;
-          onMapContextMenu(e.clientX, e.clientY, mapX, mapY);
+          const boardX = (e.clientX - rect.left) / scale;
+          const boardY = (e.clientY - rect.top) / scale;
+          onGameBoardContextMenu(e.clientX, e.clientY, boardX, boardY);
         }
       },
-      [scale, onMapContextMenu]
+      [scale, onGameBoardContextMenu]
     );
 
     return (
-      <div className="map-viewport" ref={viewportRef}>
+      <div className="game-board-viewport" ref={viewportRef}>
         <div
           style={{
-            width: MAP_WIDTH * scale,
-            height: MAP_HEIGHT * scale,
+            width: GAME_BOARD_WIDTH * scale,
+            height: GAME_BOARD_HEIGHT * scale,
             overflow: 'hidden',
             borderRadius: 8,
             boxShadow: '0 4px 30px rgba(0,0,0,0.6)',
           }}
         >
           <div
-            className={`map-container${connectingFrom ? ' connecting' : ''}`}
+            className={`game-board-container${connectingFrom ? ' connecting' : ''}`}
             ref={(node) => {
               // Merge refs
               (innerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
@@ -110,8 +113,8 @@ export const MapView = forwardRef<HTMLDivElement, MapViewProps>(
               else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
             }}
             style={{
-              width: MAP_WIDTH,
-              height: MAP_HEIGHT,
+              width: GAME_BOARD_WIDTH,
+              height: GAME_BOARD_HEIGHT,
               transform: `scale(${scale})`,
               transformOrigin: 'top left',
             }}
@@ -120,46 +123,69 @@ export const MapView = forwardRef<HTMLDivElement, MapViewProps>(
             {backgroundImage && (
               <img
                 src={backgroundImage}
-                className="map-background"
-                alt="Map background"
+                className="game-board-background"
+                alt="Game board background"
                 draggable={false}
               />
             )}
             {!backgroundImage && (
-              <div className="map-no-bg">
-                <span>{t.mapPlaceholder}</span>
+              <div className="game-board-no-bg">
+                <span>{t.gameBoardPlaceholder}</span>
               </div>
             )}
+            {/* Top bar - reserved area */}
+            <img
+              src={topBarImage}
+              className="game-board-top-bar"
+              alt="Top bar"
+              draggable={false}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: GAME_BOARD_WIDTH,
+                height: 'auto',
+                zIndex: 5,
+                pointerEvents: 'none',
+              }}
+            />
             <PathOverlay
               paths={paths}
-              locations={locations}
+              rooms={rooms}
               onPathContextMenu={(e, pathId) => {
                 onPathContextMenu(e.clientX, e.clientY, pathId);
               }}
-              onPathMidMouseDown={(e, pathId, midX, midY) => {
-                onPathMidMouseDown(e, pathId, midX, midY);
+              onIconMouseDown={(e, pathId) => {
+                onIconMouseDown(e, pathId);
+              }}
+              onPortMouseDown={(e, pathId, portType) => {
+                onPortMouseDown(e, pathId, portType);
               }}
             />
-            {locations.map((loc) => (
-              <LocationTile
-                key={loc.id}
-                location={loc}
-                isDragging={draggingId === loc.id}
-                isEditing={editingNameId === loc.id}
-                onMouseDown={(e) => onLocationMouseDown(e, loc.id)}
+            {rooms.map((room) => (
+              <RoomTile
+                key={room.id}
+                room={room}
+                isDragging={draggingId === room.id}
+                isEditing={editingNameId === room.id}
+                onMouseDown={(e) => onRoomMouseDown(e, room.id)}
                 onContextMenu={(e) => {
-                  onLocationContextMenu(e.clientX, e.clientY, loc.id);
+                  onRoomContextMenu(e.clientX, e.clientY, room.id);
                 }}
-                onNameClick={() => onNameClick(loc.id)}
-                onNameChange={(name) => onNameChange(loc.id, name)}
+                onNameClick={() => onNameClick(room.id)}
+                onNameChange={(name) => onNameChange(room.id, name)}
                 onNameBlur={onNameBlur}
-                onTileClick={
+                onRoomClick={
                   connectingFrom
-                    ? (e) => onTileClick(loc.id, e)
+                    ? (e) => onRoomClick(room.id, e)
                     : undefined
                 }
               />
             ))}
+            {/* Author credits */}
+            <div className="game-board-credits">
+              Patryk Średziński
+            </div>
           </div>
         </div>
       </div>
@@ -167,4 +193,4 @@ export const MapView = forwardRef<HTMLDivElement, MapViewProps>(
   }
 );
 
-MapView.displayName = 'MapView';
+GameBoardView.displayName = 'GameBoardView';

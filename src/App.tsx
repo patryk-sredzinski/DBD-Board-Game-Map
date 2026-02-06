@@ -1,150 +1,113 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
-  LocationData,
+  RoomData,
   PathConnection,
-  MarkerType,
-  PathColor,
-  SpawnValue,
-  TileColor,
-  MARKER_LIMITS,
-  MARKER_COLORS,
-  MARKER_TYPES,
-  MAP_WIDTH,
-  MAP_HEIGHT,
-  TILE_WIDTH,
-  TILE_HEIGHT,
+  PropTileType,
+  PathType,
+  InitialPlacementValue,
+  RoomColor,
+  RoomSize,
+  PortSide,
+  PROP_TILE_LIMITS,
+  PROP_TILE_COLORS,
+  PROP_TILE_TYPES,
+  GAME_BOARD_WIDTH,
+  GAME_BOARD_HEIGHT,
+  TOP_BAR_HEIGHT,
+  ROOM_WIDTH,
+  ROOM_HEIGHT_SMALL,
+  ROOM_HEIGHT_LARGE,
   PATH_COLORS,
-  PATH_COLOR_OPTIONS,
-  SPAWN_VALUES,
-  TILE_COLOR_OPTIONS,
-  TILE_COLORS,
-  MAX_DOORS,
+  PATH_TYPE_OPTIONS,
+  INITIAL_PLACEMENT_VALUES,
+  ROOM_COLOR_OPTIONS,
+  ROOM_COLORS,
+  MAX_BREAKABLE_WALLS,
 } from './types';
 import { useI18n } from './i18n';
-import { generateRandomPositions } from './utils/placement';
-import { exportMapAsImage } from './utils/exportMap';
-import { MapView } from './components/MapView';
+import { exportGameBoardAsImage } from './utils/exportMap';
+import { exportDbdMap, importDbdMap, downloadDbdMap } from './utils/dbdmapFormat';
+import { GameBoardView } from './components/MapView';
 import { ContextMenu, MenuItemDef } from './components/ContextMenu';
+import { getClosestPointOnPerimeter } from './components/PathOverlay';
 import './index.css';
 
 /* ============ Default assets ============ */
 
-import defaultBg from './assets/background/background.png';
-import spawn0 from './assets/spawn/spawn0.png';
-import spawn1 from './assets/spawn/spawn1.png';
-import spawn2 from './assets/spawn/spawn2.png';
-import spawn3 from './assets/spawn/spawn3.png';
-import spawn4 from './assets/spawn/spawn4.png';
-import spawn5 from './assets/spawn/spawn5.png';
-import spawnOff from './assets/spawn/spawnoff.png';
+import initialGameboardUrl from './assets/initial-gameboard.dbdmap?url';
+import initialPlacement0 from './assets/spawn/spawn0.png';
+import initialPlacement1 from './assets/spawn/spawn1.png';
+import initialPlacement2 from './assets/spawn/spawn2.png';
+import initialPlacement3 from './assets/spawn/spawn3.png';
+import initialPlacement4 from './assets/spawn/spawn4.png';
+import initialPlacement5 from './assets/spawn/spawn5.png';
+import initialPlacementOff from './assets/spawn/spawnoff.png';
 
-const SPAWN_ICONS: Record<number | 'off', string> = {
-  0: spawn0,
-  1: spawn1,
-  2: spawn2,
-  3: spawn3,
-  4: spawn4,
-  5: spawn5,
-  off: spawnOff,
+// Movement icons for path types
+import sneakIcon from './assets/movement/walk.png';
+import sprintIcon from './assets/movement/sprint.png';
+import crouchIcon from './assets/movement/crouch.png';
+import vaultIcon from './assets/movement/jump.png';
+
+const INITIAL_PLACEMENT_ICONS: Record<number | 'off', string> = {
+  0: initialPlacement0,
+  1: initialPlacement1,
+  2: initialPlacement2,
+  3: initialPlacement3,
+  4: initialPlacement4,
+  5: initialPlacement5,
+  off: initialPlacementOff,
 };
 
-import imgCoalTower from './assets/locations/IconMap_Ind_CoalTower.webp';
-import imgScrapyard from './assets/locations/IconMap_Jnk_Scrapyard.webp';
-import imgCornfield from './assets/locations/IconMap_Frm_Cornfield.webp';
-import imgPaleRose from './assets/locations/IconMap_Swp_ThePaleRose.webp';
-import imgTreatment from './assets/locations/IconMap_Hos_Treatment.webp';
-import imgCottage from './assets/locations/IconMap_Kny_Cottage.webp';
-import imgElmstreet from './assets/locations/IconMap_Eng_Elmstreet.webp';
-import imgManor from './assets/locations/IconMap_Hti_Manor.webp';
-import imgMadHouse from './assets/locations/IconMap_Brl_MadHouse.webp';
-import imgLaboratory from './assets/locations/IconMap_Qat_Laboratory.webp';
-import imgRaccoonCity from './assets/locations/IconMap_Ecl_Orionlevel01.webp';
+const PATH_TYPE_ICONS: Record<PathType, string> = {
+  blue: sneakIcon,
+  green: sprintIcon,
+  red: crouchIcon,
+  yellow: vaultIcon,
+};
 
-const DEFAULT_LOCATIONS: { name: string; image: string | null }[] = [
-  { name: 'Coal Tower', image: imgCoalTower },
-  { name: "Wreckers' Yard", image: imgScrapyard },
-  { name: 'Rotten Fields', image: imgCornfield },
-  { name: 'The Pale Rose', image: imgPaleRose },
-  { name: 'Treatment Theatre', image: imgTreatment },
-  { name: "Mother's Dwelling", image: imgMadHouse },
-  { name: 'Badham Preschool', image: imgElmstreet },
-  { name: 'Family Residence', image: imgManor },
-  { name: 'Mount Ormond Resort', image: imgCottage },
-  { name: 'Raccoon City', image: imgRaccoonCity },
-  { name: 'The Underground Complex', image: imgLaboratory },
-];
 
 /* ============ Types ============ */
 
 type CtxMenuState =
-  | { type: 'map'; x: number; y: number; mapX: number; mapY: number }
-  | { type: 'location'; x: number; y: number; locationId: string }
-  | { type: 'path'; x: number; y: number; pathId: string }
-  | { type: 'colorPicker'; x: number; y: number; fromId: string; toId: string };
+  | { type: 'gameBoard'; x: number; y: number; boardX: number; boardY: number }
+  | { type: 'room'; x: number; y: number; roomId: string }
+  | { type: 'path'; x: number; y: number; pathId: string };
 
 interface DragState {
-  type: 'location' | 'pathMid';
+  type: 'room' | 'pathIcon' | 'pathPort';
   id: string;
   startMouseX: number;
   startMouseY: number;
   startObjX: number;
   startObjY: number;
-}
-
-/* ============ Initial state ============ */
-
-function createInitialState(): LocationData[] {
-  const count = DEFAULT_LOCATIONS.length;
-  const positions = generateRandomPositions(count);
-  
-  // Randomly assign spawns 0-5 to 6 random locations
-  const spawnAssignments: (SpawnValue)[] = new Array(count).fill(null);
-  const availableSpawns = [...SPAWN_VALUES]; // [0, 1, 2, 3, 4, 5]
-  const availableIndices = Array.from({ length: count }, (_, i) => i);
-  
-  // Shuffle and pick first 6 indices for spawn assignment
-  for (let i = availableIndices.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [availableIndices[i], availableIndices[j]] = [availableIndices[j], availableIndices[i]];
-  }
-  
-  // Assign each spawn value to a random location
-  for (let i = 0; i < availableSpawns.length && i < count; i++) {
-    spawnAssignments[availableIndices[i]] = availableSpawns[i];
-  }
-  
-  return positions.map((pos, i) => ({
-    id: `loc-${i}`,
-    name: DEFAULT_LOCATIONS[i].name,
-    image: DEFAULT_LOCATIONS[i].image,
-    x: pos.x,
-    y: pos.y,
-    markers: { objective: 1, boldness: 1, survival: 1, altruism: 1 },
-    spawn: spawnAssignments[i],
-    color: 'brown' as TileColor,
-  }));
+  // For port dragging
+  portType?: 'exit' | 'entry';
 }
 
 /* ============ App ============ */
 
 export default function App() {
-  const { t, markerLabel, pathLabel } = useI18n();
+  const { t, propTileLabel, pathLabel } = useI18n();
 
-  const [locations, setLocations] = useState<LocationData[]>(() =>
-    createInitialState()
-  );
+  const [rooms, setRooms] = useState<RoomData[]>([]);
   const [paths, setPaths] = useState<PathConnection[]>([]);
-  const [backgroundImage, setBackgroundImage] = useState<string | null>(
-    defaultBg
-  );
+  const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<string[] | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [validationErrors, setValidationErrors] = useState<{ message: string; description: string }[] | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // File input ref for .dbdmap import
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   // Context menu
   const [ctxMenu, setCtxMenu] = useState<CtxMenuState | null>(null);
 
-  // Connect mode
-  const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
+  // Connect mode - stores room ID and selected path type
+  const [connectingFrom, setConnectingFrom] = useState<{ roomId: string; pathType: PathType } | null>(null);
 
   // Inline name editing
   const [editingNameId, setEditingNameId] = useState<string | null>(null);
@@ -154,16 +117,41 @@ export default function App() {
   const draggingRef = useRef<DragState | null>(null);
 
   // Refs
-  const mapRef = useRef<HTMLDivElement>(null);
+  const gameBoardRef = useRef<HTMLDivElement>(null);
   const scaleRef = useRef(0.5);
-  const getMapRectRef = useRef<(() => DOMRect | null) | null>(null);
+  const getGameBoardRectRef = useRef<(() => DOMRect | null) | null>(null);
   const bgInputRef = useRef<HTMLInputElement>(null);
-  const tileInputRef = useRef<HTMLInputElement>(null);
-  const tileInputTargetRef = useRef<string | null>(null);
+  const roomInputRef = useRef<HTMLInputElement>(null);
+  const roomInputTargetRef = useRef<string | null>(null);
 
   /* ============ Close menu ============ */
 
   const closeMenu = useCallback(() => setCtxMenu(null), []);
+
+  /* ============ Load initial gameboard ============ */
+
+  useEffect(() => {
+    async function loadInitialGameboard() {
+      try {
+        const response = await fetch(initialGameboardUrl);
+        const blob = await response.blob();
+        const file = new File([blob], 'initial-gameboard.dbdmap');
+        const data = await importDbdMap(file);
+        if (data) {
+          setRooms(data.rooms);
+          setPaths(data.paths);
+          if (data.backgroundImage) {
+            setBackgroundImage(data.backgroundImage);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load initial gameboard:', err);
+      } finally {
+        setInitialLoading(false);
+      }
+    }
+    loadInitialGameboard();
+  }, []);
 
   /* ============ Background image ============ */
 
@@ -180,86 +168,125 @@ export default function App() {
     []
   );
 
-  /* ============ Tile image ============ */
+  /* ============ Room image ============ */
 
-  const handleTileFileChange = useCallback(
+  const handleRoomFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      const targetId = tileInputTargetRef.current;
+      const targetId = roomInputTargetRef.current;
       if (file && targetId) {
         const reader = new FileReader();
         reader.onload = () => {
-          setLocations((prev) =>
-            prev.map((l) =>
-              l.id === targetId ? { ...l, image: reader.result as string } : l
+          setRooms((prev) =>
+            prev.map((r) =>
+              r.id === targetId ? { ...r, image: reader.result as string } : r
             )
           );
         };
         reader.readAsDataURL(file);
       }
       e.target.value = '';
-      tileInputTargetRef.current = null;
+      roomInputTargetRef.current = null;
     },
     []
   );
 
   /* ============ Validation ============ */
 
-  const validateMap = useCallback((): string[] => {
-    const errors: string[] = [];
+  const validateGameBoard = useCallback((): { message: string; description: string }[] => {
+    const errors: { message: string; description: string }[] = [];
 
-    // Check spawns (0-5 must all be assigned)
-    const assignedSpawns = new Set(
-      locations.map((l) => l.spawn).filter((s) => s !== null)
+    // Check initial placements (0-5 must all be assigned)
+    const assignedPlacements = new Set(
+      rooms.map((r) => r.initialPlacement).filter((p) => p !== null)
     );
-    const missingSpawns = SPAWN_VALUES.filter((s) => !assignedSpawns.has(s));
-    if (missingSpawns.length > 0) {
-      errors.push(`${t.validationMissingSpawns} ${missingSpawns.join(', ')}`);
+    const missingPlacements = INITIAL_PLACEMENT_VALUES.filter((p) => !assignedPlacements.has(p));
+    if (missingPlacements.length > 0) {
+      errors.push({
+        message: `${t.validationMissingInitialPlacements} ${missingPlacements.join(', ')}`,
+        description: t.validationMissingInitialPlacementsDesc || '',
+      });
     }
 
-    // Check markers (all must be used)
-    const missingMarkers: string[] = [];
-    for (const type of MARKER_TYPES) {
-      const totalUsed = locations.reduce((s, l) => s + l.markers[type], 0);
-      const missing = MARKER_LIMITS[type] - totalUsed;
+    // Check prop tiles (all must be used)
+    const missingPropTiles: string[] = [];
+    for (const type of PROP_TILE_TYPES) {
+      const totalUsed = rooms.reduce((s, r) => s + r.propTiles[type], 0);
+      const missing = PROP_TILE_LIMITS[type] - totalUsed;
       if (missing > 0) {
-        missingMarkers.push(`${markerLabel(type)} (${missing})`);
+        missingPropTiles.push(`${propTileLabel(type)} (${missing})`);
       }
     }
-    if (missingMarkers.length > 0) {
-      errors.push(`${t.validationMissingMarkers} ${missingMarkers.join(', ')}`);
+    if (missingPropTiles.length > 0) {
+      errors.push({
+        message: `${t.validationMissingPropTiles} ${missingPropTiles.join(', ')}`,
+        description: t.validationMissingPropTilesDesc || '',
+      });
     }
 
-    // Check connections (every location must have at least one)
+    // Check paths (every room must have at least one connection)
     const connectedIds = new Set<string>();
     for (const path of paths) {
       connectedIds.add(path.from);
       connectedIds.add(path.to);
     }
-    const unconnectedLocations = locations.filter((l) => !connectedIds.has(l.id));
-    if (unconnectedLocations.length > 0) {
-      errors.push(
-        `${t.validationNoConnections} ${unconnectedLocations.map((l) => l.name).join(', ')}`
-      );
+    const unconnectedRooms = rooms.filter((r) => !connectedIds.has(r.id));
+    if (unconnectedRooms.length > 0) {
+      errors.push({
+        message: `${t.validationNoConnections} ${unconnectedRooms.map((r) => r.name).join(', ')}`,
+        description: t.validationNoConnectionsDesc || '',
+      });
     }
 
-    // Check doors (must have exactly 4)
-    const doorCount = paths.filter((p) => p.hasDoor).length;
-    if (doorCount < MAX_DOORS) {
-      const missing = MAX_DOORS - doorCount;
-      errors.push(`${t.validationMissingDoors} ${missing}`);
+    // Check for dead-end rooms (rooms that can only be exited via yellow/vault paths)
+    // A room is a dead-end if all paths FROM it are yellow (one-way out)
+    // AND it has paths TO it (so players can enter but not leave normally)
+    const deadEndRooms: string[] = [];
+    for (const room of rooms) {
+      // Get all paths where this room is the source (from)
+      const pathsFrom = paths.filter((p) => p.from === room.id);
+      // Get all non-yellow paths where this room is the destination (to) - ways to enter
+      const pathsTo = paths.filter((p) => p.to === room.id);
+      // Also include non-yellow paths from this room (bidirectional, so also ways to leave)
+      const nonYellowPathsFrom = pathsFrom.filter((p) => p.color !== 'yellow');
+      // Non-yellow paths to this room are bidirectional (can also leave through them)
+      const nonYellowPathsTo = pathsTo.filter((p) => p.color !== 'yellow');
+      
+      // Room has connections but no way to leave (all outgoing are yellow, no bidirectional connections)
+      const hasIncoming = pathsTo.length > 0 || pathsFrom.some(p => p.color !== 'yellow');
+      const hasNonYellowExit = nonYellowPathsFrom.length > 0 || nonYellowPathsTo.length > 0;
+      
+      if (hasIncoming && !hasNonYellowExit && pathsFrom.length > 0) {
+        deadEndRooms.push(room.name);
+      }
+    }
+    if (deadEndRooms.length > 0) {
+      errors.push({
+        message: `${t.validationDeadEndRooms || 'Rooms with only one-way exits:'} ${deadEndRooms.join(', ')}`,
+        description: t.validationDeadEndRoomsDesc || '',
+      });
+    }
+
+    // Check breakable walls (must have exactly 4)
+    const breakableWallCount = paths.filter((p) => p.hasBreakableWall).length;
+    if (breakableWallCount < MAX_BREAKABLE_WALLS) {
+      const missing = MAX_BREAKABLE_WALLS - breakableWallCount;
+      errors.push({
+        message: `${t.validationMissingBreakableWalls} ${missing}`,
+        description: t.validationMissingBreakableWallsDesc || '',
+      });
     }
 
     return errors;
-  }, [locations, paths, t, markerLabel]);
+  }, [rooms, paths, t, propTileLabel]);
 
   /* ============ Download ============ */
 
   const handleDownload = useCallback(async () => {
-    if (!mapRef.current) return;
+    if (!gameBoardRef.current) return;
 
     // Validate first
-    const errors = validateMap();
+    const errors = validateGameBoard();
     if (errors.length > 0) {
       setValidationErrors(errors);
       return;
@@ -267,106 +294,179 @@ export default function App() {
 
     setDownloading(true);
     try {
-      await exportMapAsImage(mapRef.current);
+      await exportGameBoardAsImage(gameBoardRef.current);
+      setSuccessMessage(t.downloadSuccess || 'Game board image downloaded successfully!');
     } catch (err) {
       console.error('Export failed:', err);
       alert(t.exportError);
     } finally {
       setDownloading(false);
     }
-  }, [t, validateMap]);
+  }, [t, validateGameBoard]);
 
-  /* ============ Location CRUD ============ */
+  /* ============ Import/Export .dbdmap ============ */
 
-  const handleAddLocation = useCallback(
-    (mapX: number, mapY: number) => {
-      setLocations((prev) => {
-        const markers = { objective: 0, boldness: 0, survival: 0, altruism: 0 };
-        for (const type of MARKER_TYPES) {
-          const totalUsed = prev.reduce((s, l) => s + l.markers[type], 0);
-          if (totalUsed < MARKER_LIMITS[type]) {
-            markers[type] = 1;
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    setCtxMenu(null);
+    try {
+      const blob = await exportDbdMap(rooms, paths, backgroundImage);
+      downloadDbdMap(blob, 'gameboard.dbdmap');
+      setSuccessMessage(t.exportSuccess || 'Game board exported successfully!');
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert(t.exportError || 'Export failed');
+    } finally {
+      setExporting(false);
+    }
+  }, [rooms, paths, backgroundImage, t]);
+
+  const handleImportOpen = useCallback(() => {
+    setImportError(null);
+    importInputRef.current?.click();
+    setCtxMenu(null);
+  }, []);
+
+  const handleImportFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Reset input so same file can be selected again
+    e.target.value = '';
+
+    try {
+      const data = await importDbdMap(file);
+      if (!data) {
+        setImportError(t.importError || 'Invalid .dbdmap file format');
+        alert(t.importError || 'Invalid .dbdmap file format');
+        return;
+      }
+      setRooms(data.rooms);
+      setPaths(data.paths);
+      if (data.backgroundImage) {
+        setBackgroundImage(data.backgroundImage);
+      }
+      setImportError(null);
+    } catch (err) {
+      console.error('Import failed:', err);
+      setImportError(t.importError || 'Import failed');
+      alert(t.importError || 'Import failed');
+    }
+  }, [t]);
+
+  /* ============ Room CRUD ============ */
+
+  const handleAddRoom = useCallback(
+    (boardX: number, boardY: number) => {
+      const newRoomId = `room-${Date.now()}`;
+      setRooms((prev) => {
+        const propTiles = { objective: 0, boldness: 0, survival: 0, altruism: 0 };
+        for (const type of PROP_TILE_TYPES) {
+          const totalUsed = prev.reduce((s, r) => s + r.propTiles[type], 0);
+          if (totalUsed < PROP_TILE_LIMITS[type]) {
+            propTiles[type] = 1;
           }
         }
-        const x = Math.max(0, Math.min(MAP_WIDTH - TILE_WIDTH, mapX - TILE_WIDTH / 2));
-        const y = Math.max(0, Math.min(MAP_HEIGHT - TILE_HEIGHT, mapY - TILE_HEIGHT / 2));
-        const newLoc: LocationData = {
-          id: `loc-${Date.now()}`,
-          name: `${t.newLocation} ${prev.length + 1}`,
+        const x = Math.max(0, Math.min(GAME_BOARD_WIDTH - ROOM_WIDTH, boardX - ROOM_WIDTH / 2));
+        // Y position must be below the top bar
+        const y = Math.max(TOP_BAR_HEIGHT, Math.min(GAME_BOARD_HEIGHT - ROOM_HEIGHT_SMALL, boardY - ROOM_HEIGHT_SMALL / 2));
+        const newRoom: RoomData = {
+          id: newRoomId,
+          name: `${t.newRoom} ${prev.length + 1}`,
           image: null,
           x,
           y,
-          markers,
-          spawn: null,
-          color: 'brown',
+          propTiles,
+          initialPlacement: null,
+          color: 'blue',
+          size: 'small',
         };
-        return [...prev, newLoc];
+        return [...prev, newRoom];
       });
+      // Automatically enter name editing mode for the new room after it renders
+      setTimeout(() => {
+        setEditingNameId(newRoomId);
+      }, 50);
     },
     [t]
   );
 
-  const handleRemoveLocation = useCallback((id: string) => {
-    setLocations((prev) => prev.filter((l) => l.id !== id));
+  const handleRemoveRoom = useCallback((id: string) => {
+    setRooms((prev) => prev.filter((r) => r.id !== id));
     setPaths((prev) => prev.filter((p) => p.from !== id && p.to !== id));
     setCtxMenu(null);
   }, []);
 
-  /* ============ Spawn update ============ */
+  const handleToggleRoomSize = useCallback((id: string) => {
+    setRooms((prev) =>
+      prev.map((r) => {
+        if (r.id !== id) return r;
+        const newSize: RoomSize = r.size === 'large' ? 'small' : 'large';
+        const newHeight = newSize === 'large' ? ROOM_HEIGHT_LARGE : ROOM_HEIGHT_SMALL;
+        // Ensure room stays within bounds after size change
+        const maxY = GAME_BOARD_HEIGHT - newHeight;
+        const newY = Math.min(r.y, maxY);
+        return { ...r, size: newSize, y: newY };
+      })
+    );
+    setCtxMenu(null);
+  }, []);
 
-  const handleUpdateSpawn = useCallback(
-    (locationId: string, newSpawn: SpawnValue) => {
-      setLocations((prev) => {
-        // If selecting a spawn value (not null), remove it from any other location
-        if (newSpawn !== null) {
-          return prev.map((l) => {
-            if (l.id === locationId) {
-              return { ...l, spawn: newSpawn };
+  /* ============ Initial placement update ============ */
+
+  const handleUpdateInitialPlacement = useCallback(
+    (roomId: string, newPlacement: InitialPlacementValue) => {
+      setRooms((prev) => {
+        // If selecting a placement value (not null), remove it from any other room
+        if (newPlacement !== null) {
+          return prev.map((r) => {
+            if (r.id === roomId) {
+              return { ...r, initialPlacement: newPlacement };
             }
-            // Remove this spawn from other locations
-            if (l.spawn === newSpawn) {
-              return { ...l, spawn: null };
+            // Remove this placement from other rooms
+            if (r.initialPlacement === newPlacement) {
+              return { ...r, initialPlacement: null };
             }
-            return l;
+            return r;
           });
         }
-        // If setting to null (spawnoff)
-        return prev.map((l) =>
-          l.id === locationId ? { ...l, spawn: null } : l
+        // If setting to null (no placement)
+        return prev.map((r) =>
+          r.id === roomId ? { ...r, initialPlacement: null } : r
         );
       });
     },
     []
   );
 
-  /* ============ Tile color update ============ */
+  /* ============ Room color update ============ */
 
-  const handleUpdateTileColor = useCallback(
-    (locationId: string, color: TileColor) => {
-      setLocations((prev) =>
-        prev.map((l) =>
-          l.id === locationId ? { ...l, color } : l
+  const handleUpdateRoomColor = useCallback(
+    (roomId: string, color: RoomColor) => {
+      setRooms((prev) =>
+        prev.map((r) =>
+          r.id === roomId ? { ...r, color } : r
         )
       );
     },
     []
   );
 
-  /* ============ Marker update ============ */
+  /* ============ Prop tile update ============ */
 
-  const handleUpdateMarker = useCallback(
-    (locationId: string, type: MarkerType, delta: number) => {
-      setLocations((prev) => {
-        const totalCurrent = prev.reduce((s, l) => s + l.markers[type], 0);
-        const location = prev.find((l) => l.id === locationId);
-        if (!location) return prev;
-        const newValue = location.markers[type] + delta;
+  const handleUpdatePropTile = useCallback(
+    (roomId: string, type: PropTileType, delta: number) => {
+      setRooms((prev) => {
+        const totalCurrent = prev.reduce((s, r) => s + r.propTiles[type], 0);
+        const room = prev.find((r) => r.id === roomId);
+        if (!room) return prev;
+        const newValue = room.propTiles[type] + delta;
         if (newValue < 0) return prev;
-        if (delta > 0 && totalCurrent >= MARKER_LIMITS[type]) return prev;
-        return prev.map((l) =>
-          l.id === locationId
-            ? { ...l, markers: { ...l.markers, [type]: newValue } }
-            : l
+        if (delta > 0 && totalCurrent >= PROP_TILE_LIMITS[type]) return prev;
+        return prev.map((r) =>
+          r.id === roomId
+            ? { ...r, propTiles: { ...r.propTiles, [type]: newValue } }
+            : r
         );
       });
     },
@@ -376,7 +476,7 @@ export default function App() {
   /* ============ Path CRUD ============ */
 
   const handleAddPath = useCallback(
-    (from: string, to: string, color: PathColor) => {
+    (from: string, to: string, color: PathType) => {
       setPaths((prev) => {
         const exists = prev.some(
           (p) =>
@@ -399,8 +499,8 @@ export default function App() {
     setCtxMenu(null);
   }, []);
 
-  const handleChangePathColor = useCallback(
-    (pathId: string, color: PathColor) => {
+  const handleChangePathType = useCallback(
+    (pathId: string, color: PathType) => {
       setPaths((prev) =>
         prev.map((p) => (p.id === pathId ? { ...p, color } : p))
       );
@@ -409,31 +509,47 @@ export default function App() {
     []
   );
 
-  const handleTogglePathDoor = useCallback(
+  const handleToggleBreakableWall = useCallback(
     (pathId: string) => {
       setPaths((prev) => {
         const path = prev.find((p) => p.id === pathId);
         if (!path) return prev;
 
         // If turning on, check if we're at max
-        if (!path.hasDoor) {
-          const currentDoors = prev.filter((p) => p.hasDoor).length;
-          if (currentDoors >= MAX_DOORS) return prev;
+        if (!path.hasBreakableWall) {
+          const currentWalls = prev.filter((p) => p.hasBreakableWall).length;
+          if (currentWalls >= MAX_BREAKABLE_WALLS) return prev;
         }
 
         return prev.map((p) =>
-          p.id === pathId ? { ...p, hasDoor: !p.hasDoor } : p
+          p.id === pathId ? { ...p, hasBreakableWall: !p.hasBreakableWall } : p
         );
       });
     },
     []
   );
 
-  const handleUpdatePathViaPoint = useCallback(
-    (pathId: string, point: { x: number; y: number }) => {
+  const handleUpdatePort = useCallback(
+    (pathId: string, portType: 'exit' | 'entry', side: PortSide, offset: number) => {
+      setPaths((prev) =>
+        prev.map((p) => {
+          if (p.id !== pathId) return p;
+          if (portType === 'exit') {
+            return { ...p, exitPort: { side, offset } };
+          } else {
+            return { ...p, entryPort: { side, offset } };
+          }
+        })
+      );
+    },
+    []
+  );
+
+  const handleUpdateViaPoint = useCallback(
+    (pathId: string, x: number, y: number) => {
       setPaths((prev) =>
         prev.map((p) =>
-          p.id === pathId ? { ...p, viaPoint: point } : p
+          p.id === pathId ? { ...p, viaPoint: { x, y } } : p
         )
       );
     },
@@ -442,24 +558,24 @@ export default function App() {
 
   /* ============ Context Menu Openers ============ */
 
-  const handleMapContextMenu = useCallback(
-    (screenX: number, screenY: number, mapX: number, mapY: number) => {
+  const handleGameBoardContextMenu = useCallback(
+    (screenX: number, screenY: number, boardX: number, boardY: number) => {
       if (connectingFrom) {
         setConnectingFrom(null);
         return;
       }
-      setCtxMenu({ type: 'map', x: screenX, y: screenY, mapX, mapY });
+      setCtxMenu({ type: 'gameBoard', x: screenX, y: screenY, boardX, boardY });
     },
     [connectingFrom]
   );
 
-  const handleLocationContextMenu = useCallback(
-    (screenX: number, screenY: number, locationId: string) => {
+  const handleRoomContextMenu = useCallback(
+    (screenX: number, screenY: number, roomId: string) => {
       if (connectingFrom) {
         setConnectingFrom(null);
         return;
       }
-      setCtxMenu({ type: 'location', x: screenX, y: screenY, locationId });
+      setCtxMenu({ type: 'room', x: screenX, y: screenY, roomId });
     },
     [connectingFrom]
   );
@@ -476,8 +592,15 @@ export default function App() {
   const getCtxMenuItems = (): MenuItemDef[] => {
     if (!ctxMenu) return [];
 
-    if (ctxMenu.type === 'map') {
+    if (ctxMenu.type === 'gameBoard') {
       return [
+        {
+          label: t.addRoom,
+          onClick: () => {
+            handleAddRoom(ctxMenu.boardX, ctxMenu.boardY);
+            closeMenu();
+          },
+        },
         {
           label: t.changeBackground,
           onClick: () => {
@@ -485,49 +608,89 @@ export default function App() {
             closeMenu();
           },
         },
+        { label: '', separator: true },
         {
-          label: downloading ? t.downloading : t.downloadMap,
+          label: t.exportGameBoard || 'Export Game Board',
+          onClick: handleExport,
+        },
+        {
+          label: t.importGameBoard || 'Import Game Board',
+          onClick: handleImportOpen,
+        },
+        { label: '', separator: true },
+        {
+          label: t.clearGameBoard || 'Clear Game Board',
+          onClick: () => {
+            setRooms([]);
+            setPaths([]);
+            closeMenu();
+          },
+        },
+        { label: '', separator: true },
+        {
+          label: downloading ? t.downloading : t.downloadGameBoard,
           onClick: () => {
             handleDownload();
             closeMenu();
           },
           disabled: downloading,
         },
-        { label: '', separator: true },
-        {
-          label: t.addLocation,
-          onClick: () => {
-            handleAddLocation(ctxMenu.mapX, ctxMenu.mapY);
-            closeMenu();
-          },
-        },
       ];
     }
 
-    if (ctxMenu.type === 'location') {
-      const loc = locations.find((l) => l.id === ctxMenu.locationId);
-      if (!loc) return [];
-      const locationId = ctxMenu.locationId;
+    if (ctxMenu.type === 'room') {
+      const room = rooms.find((r) => r.id === ctxMenu.roomId);
+      if (!room) return [];
+      const roomId = ctxMenu.roomId;
 
       return [
         {
           label: t.changeImage,
           onClick: () => {
-            tileInputTargetRef.current = locationId;
-            tileInputRef.current?.click();
+            roomInputTargetRef.current = roomId;
+            roomInputRef.current?.click();
             closeMenu();
           },
         },
         {
           label: t.connectTo,
-          onClick: () => {
-            setConnectingFrom(locationId);
-            closeMenu();
-          },
+          render: () => (
+            <div style={{ paddingBottom: 2, paddingTop: 2 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: '#888',
+                  textTransform: 'uppercase',
+                  letterSpacing: 1,
+                  marginBottom: 6,
+                  fontWeight: 600,
+                }}
+              >
+                {t.connectTo}
+              </div>
+              <div className="ctx-path-type-options">
+                {PATH_TYPE_OPTIONS.map((pathType) => (
+                  <button
+                    key={pathType}
+                    className="ctx-path-type-btn"
+                    title={pathLabel(pathType)}
+                    style={{ borderColor: PATH_COLORS[pathType] }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setConnectingFrom({ roomId, pathType });
+                      closeMenu();
+                    }}
+                  >
+                    <img src={PATH_TYPE_ICONS[pathType]} alt={pathLabel(pathType)} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          ),
         },
         { label: '', separator: true },
         {
-          label: t.markers,
+          label: t.propTiles,
           render: () => (
             <div style={{ paddingBottom: 2, paddingTop: 2 }}>
               <div
@@ -540,41 +703,41 @@ export default function App() {
                   fontWeight: 600,
                 }}
               >
-                {t.markers}
+                {t.propTiles}
               </div>
-              {MARKER_TYPES.map((type: MarkerType) => {
-                const totalUsed = locations.reduce(
-                  (s, l) => s + l.markers[type],
+              {PROP_TILE_TYPES.map((type: PropTileType) => {
+                const totalUsed = rooms.reduce(
+                  (s, r) => s + r.propTiles[type],
                   0
                 );
-                const remaining = MARKER_LIMITS[type] - totalUsed;
-                const current = loc.markers[type];
+                const remaining = PROP_TILE_LIMITS[type] - totalUsed;
+                const current = room.propTiles[type];
                 return (
-                  <div key={type} className="ctx-marker-row">
+                  <div key={type} className="ctx-prop-tile-row">
                     <span
-                      className="ctx-marker-dot"
-                      style={{ backgroundColor: MARKER_COLORS[type] }}
+                      className="ctx-prop-tile-dot"
+                      style={{ backgroundColor: PROP_TILE_COLORS[type] }}
                     />
-                    <span className="ctx-marker-label">
-                      {markerLabel(type)}
+                    <span className="ctx-prop-tile-label">
+                      {propTileLabel(type)}
                     </span>
                     <button
-                      className="ctx-marker-btn"
+                      className="ctx-prop-tile-btn"
                       disabled={current <= 0}
                       onMouseDown={(e) => {
                         e.stopPropagation();
-                        handleUpdateMarker(locationId, type, -1);
+                        handleUpdatePropTile(roomId, type, -1);
                       }}
                     >
                       -
                     </button>
-                    <span className="ctx-marker-count">{current}</span>
+                    <span className="ctx-prop-tile-count">{current}</span>
                     <button
-                      className="ctx-marker-btn"
+                      className="ctx-prop-tile-btn"
                       disabled={remaining <= 0}
                       onMouseDown={(e) => {
                         e.stopPropagation();
-                        handleUpdateMarker(locationId, type, +1);
+                        handleUpdatePropTile(roomId, type, +1);
                       }}
                     >
                       +
@@ -587,7 +750,7 @@ export default function App() {
         },
         { label: '', separator: true },
         {
-          label: 'Spawn',
+          label: 'Initial Placement',
           render: () => (
             <div style={{ paddingBottom: 2, paddingTop: 2 }}>
               <div
@@ -600,40 +763,40 @@ export default function App() {
                   fontWeight: 600,
                 }}
               >
-                Spawn
+                Initial Placement
               </div>
-              <div className="ctx-spawn-options">
-                {/* No spawn option */}
-                <label className="ctx-spawn-option">
+              <div className="ctx-initial-placement-options">
+                {/* No placement option */}
+                <label className="ctx-initial-placement-option">
                   <input
                     type="radio"
-                    name={`spawn-${locationId}`}
-                    checked={loc.spawn === null}
-                    onChange={() => handleUpdateSpawn(locationId, null)}
+                    name={`placement-${roomId}`}
+                    checked={room.initialPlacement === null}
+                    onChange={() => handleUpdateInitialPlacement(roomId, null)}
                   />
-                  <img src={SPAWN_ICONS.off} alt="No spawn" className="ctx-spawn-icon" />
+                  <img src={INITIAL_PLACEMENT_ICONS.off} alt="No placement" className="ctx-initial-placement-icon" />
                 </label>
-                {/* Spawn 0-5 options */}
-                {SPAWN_VALUES.map((spawnVal) => {
-                  const isUsedElsewhere = locations.some(
-                    (l) => l.id !== locationId && l.spawn === spawnVal
+                {/* Placement 0-5 options */}
+                {INITIAL_PLACEMENT_VALUES.map((placementVal) => {
+                  const isUsedElsewhere = rooms.some(
+                    (r) => r.id !== roomId && r.initialPlacement === placementVal
                   );
                   return (
                     <label
-                      key={spawnVal}
-                      className={`ctx-spawn-option${isUsedElsewhere ? ' ctx-spawn-used' : ''}`}
-                      title={isUsedElsewhere ? 'Used by another location' : `Spawn ${spawnVal}`}
+                      key={placementVal}
+                      className={`ctx-initial-placement-option${isUsedElsewhere ? ' ctx-initial-placement-used' : ''}`}
+                      title={isUsedElsewhere ? 'Used by another room' : `Placement ${placementVal}`}
                     >
                       <input
                         type="radio"
-                        name={`spawn-${locationId}`}
-                        checked={loc.spawn === spawnVal}
-                        onChange={() => handleUpdateSpawn(locationId, spawnVal)}
+                        name={`placement-${roomId}`}
+                        checked={room.initialPlacement === placementVal}
+                        onChange={() => handleUpdateInitialPlacement(roomId, placementVal)}
                       />
                       <img
-                        src={SPAWN_ICONS[spawnVal]}
-                        alt={`Spawn ${spawnVal}`}
-                        className="ctx-spawn-icon"
+                        src={INITIAL_PLACEMENT_ICONS[placementVal]}
+                        alt={`Placement ${placementVal}`}
+                        className="ctx-initial-placement-icon"
                       />
                     </label>
                   );
@@ -644,7 +807,7 @@ export default function App() {
         },
         { label: '', separator: true },
         {
-          label: t.tileColor || 'Color',
+          label: t.roomColor || 'Color',
           render: () => (
             <div style={{ paddingBottom: 2, paddingTop: 2 }}>
               <div
@@ -657,21 +820,21 @@ export default function App() {
                   fontWeight: 600,
                 }}
               >
-                {t.tileColor || 'Color'}
+                {t.roomColor || 'Color'}
               </div>
-              <div className="ctx-tile-colors">
-                {TILE_COLOR_OPTIONS.map((color) => (
+              <div className="ctx-room-colors">
+                {ROOM_COLOR_OPTIONS.map((color) => (
                   <button
                     key={color}
-                    className={`ctx-tile-color-btn${loc.color === color ? ' active' : ''}`}
+                    className={`ctx-room-color-btn${room.color === color ? ' active' : ''}`}
                     title={color}
                     style={{
-                      backgroundColor: TILE_COLORS[color].header,
-                      borderColor: TILE_COLORS[color].border,
+                      backgroundColor: ROOM_COLORS[color].header,
+                      borderColor: ROOM_COLORS[color].border,
                     }}
                     onMouseDown={(e) => {
                       e.stopPropagation();
-                      handleUpdateTileColor(locationId, color);
+                      handleUpdateRoomColor(roomId, color);
                     }}
                   />
                 ))}
@@ -681,9 +844,16 @@ export default function App() {
         },
         { label: '', separator: true },
         {
-          label: t.deleteLocation,
+          label: room.size === 'large' 
+            ? (t.roomSizeSmall || 'Small Room') 
+            : (t.roomSizeLarge || 'Large Room'),
+          onClick: () => handleToggleRoomSize(roomId),
+        },
+        { label: '', separator: true },
+        {
+          label: t.deleteRoom,
           danger: true,
-          onClick: () => handleRemoveLocation(locationId),
+          onClick: () => handleRemoveRoom(roomId),
         },
       ];
     }
@@ -712,7 +882,7 @@ export default function App() {
                 {t.changeColor}
               </div>
               <div className="ctx-colors">
-                {PATH_COLOR_OPTIONS.map((color) => (
+                {PATH_TYPE_OPTIONS.map((color) => (
                   <button
                     key={color}
                     className="ctx-color-btn"
@@ -725,7 +895,7 @@ export default function App() {
                     }}
                     onMouseDown={(e) => {
                       e.stopPropagation();
-                      handleChangePathColor(pathId, color);
+                      handleChangePathType(pathId, color);
                     }}
                   />
                 ))}
@@ -735,10 +905,10 @@ export default function App() {
         },
         { label: '', separator: true },
         {
-          label: t.door || 'Door',
+          label: t.breakableWall || 'Breakable Wall',
           render: () => {
-            const currentDoors = paths.filter((p) => p.hasDoor).length;
-            const canAddDoor = path.hasDoor || currentDoors < MAX_DOORS;
+            const currentWalls = paths.filter((p) => p.hasBreakableWall).length;
+            const canAddWall = path.hasBreakableWall || currentWalls < MAX_BREAKABLE_WALLS;
             return (
               <div style={{ paddingBottom: 2, paddingTop: 2 }}>
                 <div
@@ -751,28 +921,28 @@ export default function App() {
                     fontWeight: 600,
                   }}
                 >
-                  {t.door || 'Door'} ({currentDoors}/{MAX_DOORS})
+                  {t.breakableWall || 'Breakable Wall'} ({currentWalls}/{MAX_BREAKABLE_WALLS})
                 </div>
-                <div className="ctx-door-toggle">
+                <div className="ctx-breakable-wall-toggle">
                   <button
-                    className={`ctx-door-btn${!path.hasDoor ? ' active' : ''}`}
+                    className={`ctx-breakable-wall-btn${!path.hasBreakableWall ? ' active' : ''}`}
                     onMouseDown={(e) => {
                       e.stopPropagation();
-                      if (path.hasDoor) handleTogglePathDoor(pathId);
+                      if (path.hasBreakableWall) handleToggleBreakableWall(pathId);
                     }}
                   >
-                    {t.doorOff || 'OFF'}
+                    {t.breakableWallOff || 'OFF'}
                   </button>
                   <button
-                    className={`ctx-door-btn${path.hasDoor ? ' active' : ''}${!canAddDoor ? ' disabled' : ''}`}
-                    disabled={!canAddDoor}
-                    title={!canAddDoor ? (t.doorMaxReached || 'Maximum 4 doors reached') : ''}
+                    className={`ctx-breakable-wall-btn${path.hasBreakableWall ? ' active' : ''}${!canAddWall ? ' disabled' : ''}`}
+                    disabled={!canAddWall}
+                    title={!canAddWall ? (t.breakableWallMaxReached || 'Maximum 4 breakable walls reached') : ''}
                     onMouseDown={(e) => {
                       e.stopPropagation();
-                      if (!path.hasDoor && canAddDoor) handleTogglePathDoor(pathId);
+                      if (!path.hasBreakableWall && canAddWall) handleToggleBreakableWall(pathId);
                     }}
                   >
-                    {t.doorOn || 'ON'}
+                    {t.breakableWallOn || 'ON'}
                   </button>
                 </div>
               </div>
@@ -781,50 +951,9 @@ export default function App() {
         },
         { label: '', separator: true },
         {
-          label: t.deleteConnection,
+          label: t.deletePath,
           danger: true,
           onClick: () => handleRemovePath(pathId),
-        },
-      ];
-    }
-
-    if (ctxMenu.type === 'colorPicker') {
-      const { fromId, toId } = ctxMenu;
-      return [
-        {
-          label: t.pathColor,
-          render: () => (
-            <div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: '#888',
-                  textTransform: 'uppercase',
-                  letterSpacing: 1,
-                  marginBottom: 4,
-                  fontWeight: 600,
-                  padding: '4px 0',
-                }}
-              >
-                {t.pathColor}
-              </div>
-              <div className="ctx-colors">
-                {PATH_COLOR_OPTIONS.map((color) => (
-                  <button
-                    key={color}
-                    className="ctx-color-btn"
-                    title={pathLabel(color)}
-                    style={{ backgroundColor: PATH_COLORS[color] }}
-                    onMouseDown={(ev) => {
-                      ev.stopPropagation();
-                      handleAddPath(fromId, toId, color);
-                      closeMenu();
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          ),
         },
       ];
     }
@@ -836,61 +965,77 @@ export default function App() {
 
   /* ============ Connect mode click ============ */
 
-  const handleTileClick = useCallback(
-    (locationId: string, e: React.MouseEvent) => {
-      if (!connectingFrom || connectingFrom === locationId) return;
+  const handleRoomClick = useCallback(
+    (roomId: string, _e: React.MouseEvent) => {
+      if (!connectingFrom || connectingFrom.roomId === roomId) return;
 
-      const toId = locationId;
-      const fromId = connectingFrom;
+      const toId = roomId;
+      const fromId = connectingFrom.roomId;
+      const pathType = connectingFrom.pathType;
       setConnectingFrom(null);
 
-      setCtxMenu({
-        type: 'colorPicker',
-        x: e.clientX,
-        y: e.clientY,
-        fromId,
-        toId,
-      });
+      // Directly create the path with the pre-selected type
+      handleAddPath(fromId, toId, pathType);
     },
-    [connectingFrom]
+    [connectingFrom, handleAddPath]
   );
 
-  /* ============ Drag: location & path midpoint ============ */
+  /* ============ Drag: room & path icon/port ============ */
 
-  const handleLocationMouseDown = useCallback(
-    (e: React.MouseEvent, locationId: string) => {
-      if (connectingFrom) return;
+  const handleRoomMouseDown = useCallback(
+    (e: React.MouseEvent, roomId: string) => {
+      if (connectingFrom !== null) return;
       if (e.button !== 0) return;
       e.preventDefault();
-      const loc = locations.find((l) => l.id === locationId);
-      if (!loc) return;
+      const room = rooms.find((r) => r.id === roomId);
+      if (!room) return;
 
       const state: DragState = {
-        type: 'location',
-        id: locationId,
+        type: 'room',
+        id: roomId,
         startMouseX: e.clientX,
         startMouseY: e.clientY,
-        startObjX: loc.x,
-        startObjY: loc.y,
+        startObjX: room.x,
+        startObjY: room.y,
       };
       setDragging(state);
       draggingRef.current = state;
     },
-    [locations, connectingFrom]
+    [rooms, connectingFrom]
   );
 
-  const handlePathMidMouseDown = useCallback(
-    (e: React.MouseEvent, pathId: string, midX: number, midY: number) => {
+  const handleIconMouseDown = useCallback(
+    (e: React.MouseEvent, pathId: string) => {
       if (e.button !== 0) return;
       e.preventDefault();
 
       const state: DragState = {
-        type: 'pathMid',
+        type: 'pathIcon',
         id: pathId,
         startMouseX: e.clientX,
         startMouseY: e.clientY,
-        startObjX: midX,
-        startObjY: midY,
+        startObjX: 0,
+        startObjY: 0,
+      };
+      setDragging(state);
+      draggingRef.current = state;
+    },
+    []
+  );
+
+  const handlePortMouseDown = useCallback(
+    (e: React.MouseEvent, pathId: string, portType: 'exit' | 'entry') => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+
+      const state: DragState = {
+        type: 'pathPort',
+        id: pathId,
+        startMouseX: e.clientX,
+        startMouseY: e.clientY,
+        startObjX: 0,
+        startObjY: 0,
+        portType,
       };
       setDragging(state);
       draggingRef.current = state;
@@ -908,32 +1053,59 @@ export default function App() {
       const dx = (e.clientX - d.startMouseX) / s;
       const dy = (e.clientY - d.startMouseY) / s;
 
-      if (d.type === 'location') {
+      if (d.type === 'room') {
+        // Find the room to get its size
+        const room = rooms.find((r) => r.id === d.id);
+        const roomHeight = room?.size === 'large' ? ROOM_HEIGHT_LARGE : ROOM_HEIGHT_SMALL;
+        
         const newX = Math.max(
           0,
-          Math.min(MAP_WIDTH - TILE_WIDTH, d.startObjX + dx)
+          Math.min(GAME_BOARD_WIDTH - ROOM_WIDTH, d.startObjX + dx)
         );
+        // Y position must be below the top bar
         const newY = Math.max(
-          0,
-          Math.min(MAP_HEIGHT - TILE_HEIGHT, d.startObjY + dy)
+          TOP_BAR_HEIGHT,
+          Math.min(GAME_BOARD_HEIGHT - roomHeight, d.startObjY + dy)
         );
-        setLocations((prev) =>
-          prev.map((l) =>
-            l.id === d.id ? { ...l, x: newX, y: newY } : l
+        setRooms((prev) =>
+          prev.map((r) =>
+            r.id === d.id ? { ...r, x: newX, y: newY } : r
           )
         );
-        setPaths((prev) =>
-          prev.map((p) =>
-            (p.from === d.id || p.to === d.id) && p.viaPoint
-              ? { ...p, viaPoint: undefined }
-              : p
-          )
-        );
-      } else if (d.type === 'pathMid') {
-        handleUpdatePathViaPoint(d.id, {
-          x: d.startObjX + dx,
-          y: d.startObjY + dy,
-        });
+      } else if (d.type === 'pathIcon') {
+        // Move icon to mouse position - path will route through it
+        const boardContainer = document.querySelector('.game-board-container');
+        if (!boardContainer) return;
+        const rect = boardContainer.getBoundingClientRect();
+        const mouseX = (e.clientX - rect.left) / s;
+        const mouseY = (e.clientY - rect.top) / s;
+
+        // Clamp to board bounds
+        const clampedX = Math.max(50, Math.min(GAME_BOARD_WIDTH - 50, mouseX));
+        const clampedY = Math.max(50, Math.min(GAME_BOARD_HEIGHT - 50, mouseY));
+        
+        handleUpdateViaPoint(d.id, clampedX, clampedY);
+      } else if (d.type === 'pathPort' && d.portType) {
+        // Drag port anywhere around room perimeter
+        const path = paths.find(p => p.id === d.id);
+        if (!path) return;
+        
+        const isExit = d.portType === 'exit';
+        const roomId = isExit ? path.from : path.to;
+        const room = rooms.find(r => r.id === roomId);
+        if (!room) return;
+
+        // Get mouse position in game board coordinates
+        const boardContainer = document.querySelector('.game-board-container');
+        if (!boardContainer) return;
+        const rect = boardContainer.getBoundingClientRect();
+        const mouseX = (e.clientX - rect.left) / s;
+        const mouseY = (e.clientY - rect.top) / s;
+
+        // Find closest point on room perimeter
+        const closest = getClosestPointOnPerimeter(room, { x: mouseX, y: mouseY });
+        
+        handleUpdatePort(d.id, d.portType, closest.side, closest.offset);
       }
     };
 
@@ -948,23 +1120,23 @@ export default function App() {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [dragging, handleUpdatePathViaPoint]);
+  }, [dragging, paths, rooms, handleUpdateViaPoint, handleUpdatePort]);
 
   /* ============ Name editing ============ */
 
   const handleNameClick = useCallback(
-    (locationId: string) => {
-      if (connectingFrom) return;
-      setEditingNameId(locationId);
+    (roomId: string) => {
+      if (connectingFrom !== null) return;
+      setEditingNameId(roomId);
     },
     [connectingFrom]
   );
 
   const handleNameChange = useCallback(
-    (locationId: string, name: string) => {
+    (roomId: string, name: string) => {
       if (name.trim()) {
-        setLocations((prev) =>
-          prev.map((l) => (l.id === locationId ? { ...l, name: name.trim() } : l))
+        setRooms((prev) =>
+          prev.map((r) => (r.id === roomId ? { ...r, name: name.trim() } : r))
         );
       }
     },
@@ -1000,33 +1172,41 @@ export default function App() {
         onChange={handleBgFileChange}
       />
       <input
-        ref={tileInputRef}
+        ref={roomInputRef}
         type="file"
         accept="image/*"
         style={{ display: 'none' }}
-        onChange={handleTileFileChange}
+        onChange={handleRoomFileChange}
+      />
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".dbdmap"
+        style={{ display: 'none' }}
+        onChange={handleImportFile}
       />
 
-      <div className="map-section">
-        <MapView
-          ref={mapRef}
+      <div className="game-board-section">
+        <GameBoardView
+          ref={gameBoardRef}
           backgroundImage={backgroundImage}
-          locations={locations}
+          rooms={rooms}
           paths={paths}
-          connectingFrom={connectingFrom}
+          connectingFrom={connectingFrom?.roomId ?? null}
           editingNameId={editingNameId}
-          draggingId={dragging?.type === 'location' ? dragging.id : null}
-          onMapContextMenu={handleMapContextMenu}
-          onLocationContextMenu={handleLocationContextMenu}
+          draggingId={dragging?.type === 'room' ? dragging.id : null}
+          onGameBoardContextMenu={handleGameBoardContextMenu}
+          onRoomContextMenu={handleRoomContextMenu}
           onPathContextMenu={handlePathContextMenu}
-          onLocationMouseDown={handleLocationMouseDown}
-          onPathMidMouseDown={handlePathMidMouseDown}
+          onRoomMouseDown={handleRoomMouseDown}
+          onIconMouseDown={handleIconMouseDown}
+          onPortMouseDown={handlePortMouseDown}
           onNameClick={handleNameClick}
           onNameChange={handleNameChange}
           onNameBlur={handleNameBlur}
-          onTileClick={handleTileClick}
+          onRoomClick={handleRoomClick}
           scaleRef={scaleRef}
-          getMapRect={getMapRectRef}
+          getGameBoardRect={getGameBoardRectRef}
         />
       </div>
 
@@ -1042,10 +1222,10 @@ export default function App() {
 
       {/* Status bar */}
       <div className="status-bar">
-        {connectingFrom && (
+        {connectingFrom !== null && (
           <span className="status-hint">{t.connectMode}</span>
         )}
-        {!connectingFrom && <span>{t.rightClickHint}</span>}
+        {connectingFrom === null && <span>{t.rightClickHint}</span>}
       </div>
 
       {/* Validation Error Modal */}
@@ -1058,8 +1238,11 @@ export default function App() {
             </div>
             <div className="validation-modal-content">
               {validationErrors.map((error, i) => (
-                <div key={i} className="validation-error-item">
-                  {error}
+                <div key={i} className="validation-error-item" title={error.description}>
+                  <div className="validation-error-message">{error.message}</div>
+                  {error.description && (
+                    <div className="validation-error-description">{error.description}</div>
+                  )}
                 </div>
               ))}
             </div>
@@ -1072,6 +1255,28 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Success Message Modal */}
+      {successMessage && (
+        <div className="validation-modal-overlay" onClick={() => setSuccessMessage(null)}>
+          <div className="validation-modal success-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="validation-modal-header">
+              <span className="validation-modal-icon">✅</span>
+              <h2>{t.success || 'Success'}</h2>
+            </div>
+            <div className="validation-modal-content">
+              <p className="success-message">{successMessage}</p>
+            </div>
+            <button
+              className="validation-modal-close"
+              onClick={() => setSuccessMessage(null)}
+            >
+              {t.ok || 'OK'}
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

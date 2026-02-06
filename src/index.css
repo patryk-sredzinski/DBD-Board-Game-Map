@@ -1,5 +1,5 @@
 /* ============================================
-   DBD Board Game Map Generator - Styles
+   DBD Board Game Generator - Styles
    ============================================ */
 
 * {
@@ -20,7 +20,7 @@ body {
   height: 100vh;
 }
 
-/* ======== Layout (full-screen map) ======== */
+/* ======== Layout (full-screen game board) ======== */
 
 .app {
   width: 100vw;
@@ -28,7 +28,7 @@ body {
   position: relative;
 }
 
-.map-section {
+.game-board-section {
   width: 100%;
   height: 100%;
   overflow: hidden;
@@ -39,9 +39,9 @@ body {
   position: relative;
 }
 
-/* ======== Map Viewport ======== */
+/* ======== Game Board Viewport ======== */
 
-.map-viewport {
+.game-board-viewport {
   width: 100%;
   height: 100%;
   display: flex;
@@ -50,24 +50,37 @@ body {
   padding: 16px;
 }
 
-.map-container {
+.game-board-container {
   position: relative;
   background: #2a2218;
   overflow: hidden;
 }
 
-.map-background {
+.game-board-credits {
   position: absolute;
-  top: 0;
+  bottom: 12px;
+  right: 16px;
+  font-family: 'Kanit', sans-serif;
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.15);
+  pointer-events: none;
+  user-select: none;
+  z-index: 10;
+}
+
+.game-board-background {
+  position: absolute;
+  top: 230px; /* TOP_BAR_HEIGHT - 20px overlap to fill transparent bottom of top bar */
   left: 0;
   width: 100%;
-  height: 100%;
+  height: calc(100% - 230px);
   object-fit: cover;
   user-select: none;
   pointer-events: none;
+  z-index: 0;
 }
 
-.map-no-bg {
+.game-board-no-bg {
   position: absolute;
   top: 0;
   left: 0;
@@ -87,22 +100,22 @@ body {
 
 /* ======== Connect mode ======== */
 
-.map-container.connecting {
+.game-board-container.connecting {
   cursor: crosshair;
 }
 
-.connecting .location-tile {
+.connecting .room-tile {
   cursor: crosshair;
 }
 
-.connecting .location-tile:hover {
+.connecting .room-tile:hover {
   outline: 3px solid #c9a84c;
   outline-offset: 2px;
 }
 
-/* ======== Location Tile ======== */
+/* ======== Room Tile ======== */
 
-.location-tile {
+.room-tile {
   position: absolute;
   border: 4px solid #8B7355;
   background: #1a1510;
@@ -116,17 +129,17 @@ body {
   flex-direction: column;
 }
 
-.location-tile:active {
+.room-tile:active {
   cursor: grabbing;
 }
 
-.location-tile.dragging {
+.room-tile.dragging {
   opacity: 0.85;
   z-index: 10;
   box-shadow: 6px 8px 24px rgba(0, 0, 0, 0.9);
 }
 
-.tile-header {
+.room-header {
   padding: 10px;
   border-bottom: 3px solid #6b5a42;
   flex-shrink: 0;
@@ -134,17 +147,17 @@ body {
   align-items: center;
   gap: 10px;
   position: relative;
-  background: var(--tile-header-color);
+  background: var(--room-header-color);
 }
 
-.tile-header::before {
+.room-header::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: var(--tile-texture);
+  background-image: var(--room-texture);
   background-size: cover;
   background-position: center;
   mix-blend-mode: overlay;
@@ -152,13 +165,13 @@ body {
   pointer-events: none;
 }
 
-.spawn-icon {
+.initial-placement-icon {
   flex-shrink: 0;
   position: relative;
   z-index: 1;
 }
 
-.tile-header-content {
+.room-header-content {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -167,7 +180,7 @@ body {
   z-index: 1;
 }
 
-.tile-name {
+.room-name {
   font-family: 'Kanit', sans-serif;
   font-weight: 700;
   font-size: 22px;
@@ -181,7 +194,7 @@ body {
   cursor: text;
 }
 
-.tile-name-input {
+.room-name-input {
   font-family: 'Kanit', sans-serif;
   font-weight: 700;
   font-size: 22px;
@@ -198,20 +211,20 @@ body {
   display: block;
 }
 
-.tile-markers {
+.room-prop-tiles {
   display: flex;
   gap: 3px;
   padding: 1px 0;
   flex-wrap: wrap;
 }
 
-.marker-group {
+.prop-tile-group {
   display: flex;
   gap: 2px;
   align-items: center;
 }
 
-.marker-dot {
+.prop-tile-dot {
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -219,16 +232,14 @@ body {
   border: 2px solid rgba(0, 0, 0, 0.3);
 }
 
-.marker-icon {
-  width: 20px;
-  height: 20px;
+.prop-tile-icon {
+  width: 28px;
+  height: 28px;
   display: inline-block;
-  border: 1px solid rgba(0, 0, 0, 0.4);
-  border-radius: 2px;
-  box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  object-fit: contain;
 }
 
-.tile-image-container {
+.room-image-container {
   position: relative;
   width: 100%;
   flex: 1;
@@ -236,7 +247,7 @@ body {
   background: #2a2218;
 }
 
-.tile-image {
+.room-image {
   position: absolute;
   top: 0;
   left: 0;
@@ -247,7 +258,7 @@ body {
   display: block;
 }
 
-.tile-image-placeholder {
+.room-image-placeholder {
   width: 100%;
   height: 100%;
   display: flex;
@@ -275,11 +286,11 @@ body {
   stroke-width: 8;
 }
 
-.path-runner {
+.path-movement-icon {
   cursor: grab;
 }
 
-.path-runner:active {
+.path-movement-icon:active {
   cursor: grabbing;
 }
 
@@ -334,15 +345,15 @@ body {
   padding: 4px 12px;
 }
 
-/* Marker row inside context menu */
-.ctx-marker-row {
+/* Prop tile row inside context menu */
+.ctx-prop-tile-row {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 3px 0;
 }
 
-.ctx-marker-dot {
+.ctx-prop-tile-dot {
   width: 12px;
   height: 12px;
   border-radius: 50%;
@@ -350,13 +361,13 @@ body {
   flex-shrink: 0;
 }
 
-.ctx-marker-label {
+.ctx-prop-tile-label {
   flex: 1;
   font-size: 12px;
   color: #aaa;
 }
 
-.ctx-marker-count {
+.ctx-prop-tile-count {
   font-size: 13px;
   font-weight: 600;
   width: 20px;
@@ -364,7 +375,7 @@ body {
   font-family: 'Kanit', sans-serif;
 }
 
-.ctx-marker-btn {
+.ctx-prop-tile-btn {
   width: 22px;
   height: 22px;
   border: 1px solid #333;
@@ -379,12 +390,12 @@ body {
   padding: 0;
 }
 
-.ctx-marker-btn:hover:not(:disabled) {
+.ctx-prop-tile-btn:hover:not(:disabled) {
   background: #2a2a4a;
   border-color: #555;
 }
 
-.ctx-marker-btn:disabled {
+.ctx-prop-tile-btn:disabled {
   opacity: 0.25;
   cursor: not-allowed;
 }
@@ -446,15 +457,15 @@ body {
   background: rgba(201, 168, 76, 0.12);
 }
 
-/* Spawn selector in context menu */
-.ctx-spawn-options {
+/* Initial placement selector in context menu */
+.ctx-initial-placement-options {
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
   max-width: 200px;
 }
 
-.ctx-spawn-option {
+.ctx-initial-placement-option {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -465,38 +476,38 @@ body {
   transition: all 0.1s;
 }
 
-.ctx-spawn-option:hover {
+.ctx-initial-placement-option:hover {
   border-color: rgba(255, 255, 255, 0.3);
 }
 
-.ctx-spawn-option:has(input:checked) {
+.ctx-initial-placement-option:has(input:checked) {
   border-color: #c9a84c;
   background: rgba(201, 168, 76, 0.15);
 }
 
-.ctx-spawn-option.ctx-spawn-used {
+.ctx-initial-placement-option.ctx-initial-placement-used {
   opacity: 0.4;
 }
 
-.ctx-spawn-option input[type="radio"] {
+.ctx-initial-placement-option input[type="radio"] {
   display: none;
 }
 
-.ctx-spawn-icon {
+.ctx-initial-placement-icon {
   width: 28px;
   height: 28px;
   object-fit: contain;
 }
 
-/* Tile color selector in context menu */
-.ctx-tile-colors {
+/* Room color selector in context menu */
+.ctx-room-colors {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 6px;
   max-width: 180px;
 }
 
-.ctx-tile-color-btn {
+.ctx-room-color-btn {
   width: 28px;
   height: 28px;
   border: 3px solid;
@@ -505,22 +516,22 @@ body {
   transition: all 0.1s;
 }
 
-.ctx-tile-color-btn:hover {
+.ctx-room-color-btn:hover {
   transform: scale(1.15);
 }
 
-.ctx-tile-color-btn.active {
+.ctx-room-color-btn.active {
   outline: 2px solid #c9a84c;
   outline-offset: 2px;
 }
 
-/* Door toggle in context menu */
-.ctx-door-toggle {
+/* Breakable wall toggle in context menu */
+.ctx-breakable-wall-toggle {
   display: flex;
   gap: 8px;
 }
 
-.ctx-door-btn {
+.ctx-breakable-wall-btn {
   flex: 1;
   padding: 8px 16px;
   background: #1a1a2a;
@@ -534,19 +545,19 @@ body {
   transition: all 0.15s;
 }
 
-.ctx-door-btn:hover:not(.disabled) {
+.ctx-breakable-wall-btn:hover:not(.disabled) {
   background: #2a2a4a;
   border-color: #555;
   color: #ddd;
 }
 
-.ctx-door-btn.active {
+.ctx-breakable-wall-btn.active {
   background: #2a3a2a;
   border-color: #4a8;
   color: #8c8;
 }
 
-.ctx-door-btn.disabled {
+.ctx-breakable-wall-btn.disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
@@ -644,11 +655,28 @@ body {
 .validation-error-item {
   background: rgba(204, 85, 85, 0.1);
   border-left: 3px solid #cc5555;
-  padding: 10px 14px;
+  padding: 12px 14px;
   border-radius: 0 6px 6px 0;
   font-size: 14px;
   color: #ddd;
   line-height: 1.4;
+  transition: background 0.15s ease;
+}
+
+.validation-error-item:hover {
+  background: rgba(204, 85, 85, 0.15);
+}
+
+.validation-error-message {
+  font-weight: 500;
+  color: #eee;
+}
+
+.validation-error-description {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #aaa;
+  line-height: 1.5;
 }
 
 .validation-modal-close {
@@ -668,6 +696,158 @@ body {
 .validation-modal-close:hover {
   background: linear-gradient(180deg, #3a3a5a 0%, #2a2a3e 100%);
   border-color: #555;
+}
+
+/* ======== Import Modal ======== */
+
+.import-modal {
+  border-color: #5588cc;
+  min-width: 400px;
+}
+
+.import-modal .validation-modal-header h2 {
+  color: #5588cc;
+}
+
+.import-textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: 12px;
+  background: #0a0a12;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #ddd;
+  font-family: monospace;
+  font-size: 12px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.import-textarea:focus {
+  outline: none;
+  border-color: #5588cc;
+}
+
+.import-textarea::placeholder {
+  color: #666;
+}
+
+.import-error {
+  background: rgba(204, 85, 85, 0.1);
+  border-left: 3px solid #cc5555;
+  padding: 10px 14px;
+  border-radius: 0 6px 6px 0;
+  font-size: 14px;
+  color: #cc5555;
+}
+
+.import-modal-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.import-modal-buttons .validation-modal-close {
+  flex: 1;
+}
+
+.import-cancel {
+  background: linear-gradient(180deg, #2a2a3a 0%, #1a1a22 100%);
+}
+
+.import-confirm {
+  background: linear-gradient(180deg, #2a4a6a 0%, #1a2a3e 100%);
+  border-color: #5588cc;
+}
+
+.import-confirm:hover {
+  background: linear-gradient(180deg, #3a5a7a 0%, #2a3a4e 100%);
+  border-color: #6699dd;
+}
+
+.import-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ======== Success Modal ======== */
+
+.success-modal {
+  border-color: #44aa66;
+}
+
+.success-modal .validation-modal-header {
+  background: linear-gradient(180deg, #1a3a2a 0%, #152520 100%);
+  border-bottom-color: #336644;
+}
+
+.success-modal .validation-modal-close {
+  background: linear-gradient(180deg, #2a5a4a 0%, #1a3a2e 100%);
+  border-color: #44aa66;
+}
+
+.success-modal .validation-modal-close:hover {
+  background: linear-gradient(180deg, #3a6a5a 0%, #2a4a3e 100%);
+  border-color: #55bb77;
+}
+
+.success-message {
+  text-align: center;
+  font-size: 15px;
+  color: #ddd;
+  margin: 0;
+  padding: 8px 0;
+}
+
+/* ======== Port Handles ======== */
+
+.port-handle {
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+
+.port-handle:hover {
+  opacity: 1;
+}
+
+.port-handle-circle {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+.path-group:hover .port-handle {
+  opacity: 1;
+}
+
+/* ======== Path Type Selection (Connect To) ======== */
+
+.ctx-path-type-options {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ctx-path-type-btn {
+  width: 48px;
+  height: 48px;
+  padding: 4px;
+  border: 3px solid transparent;
+  border-radius: 8px;
+  background: #1a1a1f;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.ctx-path-type-btn:hover {
+  background: #252530;
+  transform: scale(1.05);
+}
+
+.ctx-path-type-btn img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
 }
 
 /* ======== Scrollbar ======== */

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { useI18n, LANGUAGES } from '../i18n';
 
 export interface MenuItemDef {
@@ -21,6 +21,7 @@ interface ContextMenuProps {
 export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const { lang, setLang } = useI18n();
+  const [position, setPosition] = useState<{ left: number; top: number; maxHeight?: number } | null>(null);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -42,24 +43,54 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
     };
   }, [onClose]);
 
-  const style: React.CSSProperties = {
-    position: 'fixed',
-    left: x,
-    top: y,
-    zIndex: 9999,
-  };
-
-  useEffect(() => {
+  // Calculate position after render, before paint
+  useLayoutEffect(() => {
     if (menuRef.current) {
       const rect = menuRef.current.getBoundingClientRect();
-      if (rect.right > window.innerWidth) {
-        menuRef.current.style.left = `${x - rect.width}px`;
+      const padding = 8;
+      
+      // Horizontal positioning
+      let newLeft = x;
+      if (x + rect.width > window.innerWidth - padding) {
+        newLeft = x - rect.width;
       }
-      if (rect.bottom > window.innerHeight) {
-        menuRef.current.style.top = `${y - rect.height}px`;
+      if (newLeft < padding) {
+        newLeft = padding;
       }
+      
+      // Vertical positioning
+      let newTop = y;
+      let maxHeight: number | undefined;
+      
+      if (y + rect.height > window.innerHeight - padding) {
+        // Try positioning above the click point
+        newTop = y - rect.height;
+      }
+      
+      // If still doesn't fit (goes above screen), clamp to top
+      if (newTop < padding) {
+        newTop = padding;
+      }
+      
+      // If menu is taller than available space, add max height
+      const availableHeight = window.innerHeight - padding * 2;
+      if (rect.height > availableHeight) {
+        maxHeight = availableHeight;
+      }
+      
+      setPosition({ left: newLeft, top: newTop, maxHeight });
     }
-  }, [x, y]);
+  }, [x, y, items]);
+
+  const style: React.CSSProperties = {
+    position: 'fixed',
+    left: position?.left ?? x,
+    top: position?.top ?? y,
+    zIndex: 9999,
+    visibility: position ? 'visible' : 'hidden', // Hide until positioned
+    maxHeight: position?.maxHeight,
+    overflowY: position?.maxHeight ? 'auto' : undefined,
+  };
 
   return (
     <div className="ctx-menu" ref={menuRef} style={style}>

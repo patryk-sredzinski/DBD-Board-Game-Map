@@ -1,52 +1,52 @@
 import { useRef, useEffect } from 'react';
 import {
-  LocationData,
-  MARKER_COLORS,
-  MarkerType,
-  TILE_WIDTH,
-  TILE_HEIGHT,
-  MARKER_TYPES,
-  SpawnValue,
-  TILE_COLORS,
+  RoomData,
+  PropTileType,
+  ROOM_WIDTH,
+  ROOM_HEIGHT_SMALL,
+  ROOM_HEIGHT_LARGE,
+  PROP_TILE_TYPES,
+  InitialPlacementValue,
+  ROOM_COLORS,
 } from '../types';
 
-import objectiveIcon from '../assets/score/objective.webp';
-import boldnessIcon from '../assets/score/boldness.webp';
-import survivalIcon from '../assets/score/survival.webp';
-import altruismIcon from '../assets/score/altruism.webp';
+import objectiveIcon from '../assets/score/objective-tinted.png';
+import boldnessIcon from '../assets/score/boldness-tinted.png';
+import survivalIcon from '../assets/score/survival-tinted.png';
+import altruismIcon from '../assets/score/altruism-tinted.png';
 
-import spawn0 from '../assets/spawn/spawn0.png';
-import spawn1 from '../assets/spawn/spawn1.png';
-import spawn2 from '../assets/spawn/spawn2.png';
-import spawn3 from '../assets/spawn/spawn3.png';
-import spawn4 from '../assets/spawn/spawn4.png';
-import spawn5 from '../assets/spawn/spawn5.png';
-import spawnOff from '../assets/spawn/spawnoff.png';
-import tileTexture from '../assets/background/tile_texture.jpg';
+import initialPlacement0 from '../assets/spawn/spawn0.png';
+import initialPlacement1 from '../assets/spawn/spawn1.png';
+import initialPlacement2 from '../assets/spawn/spawn2.png';
+import initialPlacement3 from '../assets/spawn/spawn3.png';
+import initialPlacement4 from '../assets/spawn/spawn4.png';
+import initialPlacement5 from '../assets/spawn/spawn5.png';
+import initialPlacementOff from '../assets/spawn/spawnoff.png';
+import roomTexture from '../assets/background/tile_texture.jpg';
 
-const MARKER_ICONS: Record<MarkerType, string> = {
+const PROP_TILE_ICONS: Record<PropTileType, string> = {
   objective: objectiveIcon,
   boldness: boldnessIcon,
   survival: survivalIcon,
   altruism: altruismIcon,
 };
 
-const SPAWN_ICONS: Record<number, string> = {
-  0: spawn0,
-  1: spawn1,
-  2: spawn2,
-  3: spawn3,
-  4: spawn4,
-  5: spawn5,
+const INITIAL_PLACEMENT_ICONS: Record<number, string> = {
+  0: initialPlacement0,
+  1: initialPlacement1,
+  2: initialPlacement2,
+  3: initialPlacement3,
+  4: initialPlacement4,
+  5: initialPlacement5,
 };
 
-function getSpawnIcon(spawn: SpawnValue): string {
-  if (spawn === null) return spawnOff;
-  return SPAWN_ICONS[spawn] || spawnOff;
+function getInitialPlacementIcon(placement: InitialPlacementValue): string {
+  if (placement === null) return initialPlacementOff;
+  return INITIAL_PLACEMENT_ICONS[placement] || initialPlacementOff;
 }
 
-interface LocationTileProps {
-  location: LocationData;
+interface RoomTileProps {
+  room: RoomData;
   isDragging: boolean;
   isEditing: boolean;
   onMouseDown: (e: React.MouseEvent) => void;
@@ -54,11 +54,11 @@ interface LocationTileProps {
   onNameClick: () => void;
   onNameChange: (name: string) => void;
   onNameBlur: () => void;
-  onTileClick?: (e: React.MouseEvent) => void;
+  onRoomClick?: (e: React.MouseEvent) => void;
 }
 
-export function LocationTile({
-  location,
+export function RoomTile({
+  room,
   isDragging,
   isEditing,
   onMouseDown,
@@ -66,8 +66,8 @@ export function LocationTile({
   onNameClick,
   onNameChange,
   onNameBlur,
-  onTileClick,
-}: LocationTileProps) {
+  onRoomClick,
+}: RoomTileProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -77,17 +77,18 @@ export function LocationTile({
     }
   }, [isEditing]);
 
-  const tileColors = TILE_COLORS[location.color];
+  const roomColors = ROOM_COLORS[room.color];
+  const roomHeight = room.size === 'large' ? ROOM_HEIGHT_LARGE : ROOM_HEIGHT_SMALL;
 
   return (
     <div
-      className={`location-tile${isDragging ? ' dragging' : ''}`}
+      className={`room-tile${isDragging ? ' dragging' : ''}`}
       style={{
-        left: location.x,
-        top: location.y,
-        width: TILE_WIDTH,
-        height: TILE_HEIGHT,
-        borderColor: tileColors.border,
+        left: room.x,
+        top: room.y,
+        width: ROOM_WIDTH,
+        height: roomHeight,
+        borderColor: roomColors.border,
       }}
       onMouseDown={(e) => {
         if (e.button === 0) onMouseDown(e);
@@ -98,31 +99,31 @@ export function LocationTile({
         onContextMenu(e);
       }}
       onClick={(e) => {
-        if (onTileClick) {
+        if (onRoomClick) {
           e.stopPropagation();
-          onTileClick(e);
+          onRoomClick(e);
         }
       }}
     >
       <div
-        className="tile-header"
+        className="room-header"
         style={{
-          '--tile-header-color': tileColors.header,
-          '--tile-texture': `url(${tileTexture})`,
+          '--room-header-color': roomColors.header,
+          '--room-texture': `url(${roomTexture})`,
         } as React.CSSProperties}
       >
         <img
-          src={getSpawnIcon(location.spawn)}
-          alt={location.spawn !== null ? `Spawn ${location.spawn}` : 'No spawn'}
-          className="spawn-icon"
+          src={getInitialPlacementIcon(room.initialPlacement)}
+          alt={room.initialPlacement !== null ? `Placement ${room.initialPlacement}` : 'No placement'}
+          className="initial-placement-icon"
           draggable={false}
         />
-        <div className="tile-header-content">
+        <div className="room-header-content">
           {isEditing ? (
             <input
               ref={inputRef}
-              className="tile-name-input"
-              defaultValue={location.name}
+              className="room-name-input"
+              defaultValue={room.name}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   onNameChange((e.target as HTMLInputElement).value);
@@ -140,38 +141,30 @@ export function LocationTile({
             />
           ) : (
             <div
-              className="tile-name"
+              className="room-name"
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 onNameClick();
               }}
             >
-              {location.name}
+              {room.name}
             </div>
           )}
-          <div className="tile-markers">
-            {MARKER_TYPES.map((type: MarkerType) => {
-              const count = location.markers[type];
+          <div className="room-prop-tiles">
+            {PROP_TILE_TYPES.map((type: PropTileType) => {
+              const count = room.propTiles[type];
               if (count === 0) return null;
               return (
-                <div key={type} className="marker-group">
+                <div key={type} className="prop-tile-group">
                   {Array.from({ length: count }).map((_, i) => (
-                    <div
+                    <img
                       key={i}
-                      className="marker-icon"
+                      src={PROP_TILE_ICONS[type]}
+                      alt={type}
                       title={type}
-                      style={{
-                        WebkitMaskImage: `url(${MARKER_ICONS[type]})`,
-                        maskImage: `url(${MARKER_ICONS[type]})`,
-                        WebkitMaskSize: 'contain',
-                        maskSize: 'contain',
-                        WebkitMaskRepeat: 'no-repeat',
-                        maskRepeat: 'no-repeat',
-                        WebkitMaskPosition: 'center',
-                        maskPosition: 'center',
-                        backgroundColor: MARKER_COLORS[type],
-                      }}
+                      className="prop-tile-icon"
+                      draggable={false}
                     />
                   ))}
                 </div>
@@ -180,16 +173,16 @@ export function LocationTile({
           </div>
         </div>
       </div>
-      <div className="tile-image-container">
-        {location.image ? (
+      <div className="room-image-container">
+        {room.image ? (
           <img
-            src={location.image}
-            alt={location.name}
-            className="tile-image"
+            src={room.image}
+            alt={room.name}
+            className="room-image"
             draggable={false}
           />
         ) : (
-          <div className="tile-image-placeholder">
+          <div className="room-image-placeholder">
             <svg
               width="64"
               height="64"
