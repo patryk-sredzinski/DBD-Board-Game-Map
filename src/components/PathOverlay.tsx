@@ -437,9 +437,9 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
-function getBreakableWallBorderPath(size: number, borderWidth: number): string {
+function getBreakableWallBorderPath(size: number, borderWidth: number, offsetX: number = 0, offsetY: number = 0): string {
   const totalSize = size + borderWidth;
-  const offset = -borderWidth / 2;
+  const baseOffset = -borderWidth / 2;
   
   // Generate irregular edge with varying notches
   const generateEdge = (
@@ -450,29 +450,28 @@ function getBreakableWallBorderPath(size: number, borderWidth: number): string {
   ): string => {
     const dx = endX - startX;
     const dy = endY - startY;
-    const length = Math.sqrt(dx * dx + dy * dy);
     const segments = 8 + Math.floor(seededRandom(seed) * 4); // 8-11 segments
     
     let path = '';
     for (let i = 1; i < segments; i++) {
       const t = i / segments;
-      const x = startX + dx * t;
-      const y = startY + dy * t;
+      const px = startX + dx * t;
+      const py = startY + dy * t;
       
       // Vary the notch depth and direction randomly
       const rand = seededRandom(seed + i * 7.3);
       const depth = (rand - 0.3) * 6; // -1.8 to +4.2 depth, biased outward
       
-      path += `L ${x + outwardX * depth} ${y + outwardY * depth} `;
+      path += `L ${px + outwardX * depth} ${py + outwardY * depth} `;
     }
     return path;
   };
   
-  // Four corners
-  const tl = { x: offset, y: offset };
-  const tr = { x: offset + totalSize, y: offset };
-  const br = { x: offset + totalSize, y: offset + totalSize };
-  const bl = { x: offset, y: offset + totalSize };
+  // Four corners with offset applied
+  const tl = { x: offsetX + baseOffset, y: offsetY + baseOffset };
+  const tr = { x: offsetX + baseOffset + totalSize, y: offsetY + baseOffset };
+  const br = { x: offsetX + baseOffset + totalSize, y: offsetY + baseOffset + totalSize };
+  const bl = { x: offsetX + baseOffset, y: offsetY + baseOffset + totalSize };
   
   // Build path with irregular edges on each side
   let d = `M ${tl.x} ${tl.y} `;
@@ -569,16 +568,17 @@ function MovementIcon({
 }) {
   const size = 102;
   const innerBorderWidth = 6;
+  const offsetX = x - size / 2;
+  const offsetY = y - size / 2;
   return (
     <g
-      transform={`translate(${x - size / 2}, ${y - size / 2})`}
       className="path-movement-icon"
       onMouseDown={onMouseDown}
       onContextMenu={onContextMenu}
     >
       <rect
-        x={-innerBorderWidth / 2 - 10}
-        y={-innerBorderWidth / 2 - 10}
+        x={offsetX - innerBorderWidth / 2 - 10}
+        y={offsetY - innerBorderWidth / 2 - 10}
         width={size + innerBorderWidth + 20}
         height={size + innerBorderWidth + 20}
         fill="transparent"
@@ -587,13 +587,13 @@ function MovementIcon({
       {hasBreakableWall ? (
         <>
           <path
-            d={getBreakableWallBorderPath(size, innerBorderWidth)}
+            d={getBreakableWallBorderPath(size, innerBorderWidth, offsetX, offsetY)}
             fill="#1a1a1a"
             stroke="none"
             style={{ pointerEvents: 'none' }}
           />
           <path
-            d={getBreakableWallBorderPath(size, innerBorderWidth)}
+            d={getBreakableWallBorderPath(size, innerBorderWidth, offsetX, offsetY)}
             fill="none"
             stroke={color}
             strokeWidth={innerBorderWidth}
@@ -602,8 +602,8 @@ function MovementIcon({
         </>
       ) : (
         <rect
-          x={-innerBorderWidth / 2}
-          y={-innerBorderWidth / 2}
+          x={offsetX - innerBorderWidth / 2}
+          y={offsetY - innerBorderWidth / 2}
           width={size + innerBorderWidth}
           height={size + innerBorderWidth}
           fill="none"
@@ -614,6 +614,8 @@ function MovementIcon({
       )}
       <image
         href={iconSrc}
+        x={offsetX}
+        y={offsetY}
         width={size}
         height={size}
         style={{ pointerEvents: 'none' }}
@@ -637,18 +639,18 @@ function MovementIconOutline({
   const innerBorderWidth = 6;
   const outlineWidth = 2.5;
   const totalSize = size + innerBorderWidth;
+  const offsetX = x - size / 2;
+  const offsetY = y - size / 2;
 
   if (hasBreakableWall) {
     return (
-      <g transform={`translate(${x - size / 2}, ${y - size / 2})`}>
-        <path
-          d={getBreakableWallBorderPath(size, innerBorderWidth)}
-          fill="none"
-          stroke="#000"
-          strokeWidth={innerBorderWidth + outlineWidth * 2}
-          style={{ pointerEvents: 'none' }}
-        />
-      </g>
+      <path
+        d={getBreakableWallBorderPath(size, innerBorderWidth, offsetX, offsetY)}
+        fill="none"
+        stroke="#000"
+        strokeWidth={innerBorderWidth + outlineWidth * 2}
+        style={{ pointerEvents: 'none' }}
+      />
     );
   }
 

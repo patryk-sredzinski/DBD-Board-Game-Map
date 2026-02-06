@@ -29,6 +29,29 @@ export async function exportGameBoardAsImage(element: HTMLElement): Promise<void
     bgImage.style.height = '100%';
   }
   
+  // Fix room images - html2canvas doesn't support object-fit properly
+  // Replace img elements with divs using background-image
+  clone.querySelectorAll('.room-image').forEach((img) => {
+    const imgEl = img as HTMLImageElement;
+    const src = imgEl.src;
+    const container = imgEl.parentElement;
+    if (container && src) {
+      // Create a div with background-image to replace the img
+      const div = document.createElement('div');
+      div.style.position = 'absolute';
+      div.style.top = '0';
+      div.style.left = '0';
+      div.style.width = '100%';
+      div.style.height = '100%';
+      div.style.backgroundImage = `url("${src}")`;
+      div.style.backgroundSize = 'cover';
+      div.style.backgroundPosition = 'center';
+      // Hide original img and add the div
+      imgEl.style.display = 'none';
+      container.appendChild(div);
+    }
+  });
+  
   document.body.appendChild(clone);
 
   // Small delay to ensure clone is rendered
