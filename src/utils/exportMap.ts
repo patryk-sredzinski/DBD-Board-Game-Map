@@ -8,10 +8,11 @@ export async function exportGameBoardAsImage(element: HTMLElement): Promise<void
   // Clone the element for off-screen rendering
   const clone = element.cloneNode(true) as HTMLElement;
   
-  // Style clone to be off-screen but rendered at full size
+  // Style clone to be rendered but scrolled out of view
+  // This avoids off-screen rendering issues with html2canvas
   clone.style.position = 'absolute';
-  clone.style.left = '-9999px';
-  clone.style.top = '-9999px';
+  clone.style.left = '0';
+  clone.style.top = `${window.scrollY + window.innerHeight + 100}px`;
   clone.style.transform = 'none';
   clone.style.transformOrigin = 'top left';
   clone.style.width = `${GAME_BOARD_WIDTH}px`;
@@ -51,6 +52,20 @@ export async function exportGameBoardAsImage(element: HTMLElement): Promise<void
       container.appendChild(div);
     }
   });
+  
+  // Fix SVG rendering issues with html2canvas
+  // Force SVG elements to have explicit positioning
+  const svgElement = clone.querySelector('.path-overlay') as SVGSVGElement;
+  if (svgElement) {
+    // Ensure SVG has proper dimensions
+    svgElement.setAttribute('width', String(GAME_BOARD_WIDTH));
+    svgElement.setAttribute('height', String(GAME_BOARD_HEIGHT));
+    svgElement.style.width = `${GAME_BOARD_WIDTH}px`;
+    svgElement.style.height = `${GAME_BOARD_HEIGHT}px`;
+    svgElement.style.position = 'absolute';
+    svgElement.style.top = '0';
+    svgElement.style.left = '0';
+  }
   
   document.body.appendChild(clone);
 
