@@ -1,6 +1,50 @@
 import html2canvas from 'html2canvas';
 import { GAME_BOARD_WIDTH, GAME_BOARD_HEIGHT } from '../types';
 
+// Convert SVG element to an image data URL
+async function svgToImage(svgElement: SVGSVGElement): Promise<string> {
+  return new Promise((resolve, reject) => {
+    // Clone SVG and inline all styles
+    const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement;
+    
+    // Set explicit dimensions
+    clonedSvg.setAttribute('width', String(GAME_BOARD_WIDTH));
+    clonedSvg.setAttribute('height', String(GAME_BOARD_HEIGHT));
+    
+    // Serialize SVG to string
+    const serializer = new XMLSerializer();
+    let svgString = serializer.serializeToString(clonedSvg);
+    
+    // Fix any href attributes for images inside SVG
+    svgString = svgString.replace(/href="/g, 'xlink:href="');
+    
+    // Create blob and load as image
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    
+    const img = new Image();
+    img.onload = () => {
+      // Draw to canvas to get data URL
+      const canvas = document.createElement('canvas');
+      canvas.width = GAME_BOARD_WIDTH;
+      canvas.height = GAME_BOARD_HEIGHT;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/png'));
+      } else {
+        reject(new Error('Could not get canvas context'));
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Failed to load SVG as image'));
+    };
+    img.src = url;
+  });
+}
+
 export async function exportGameBoardAsImage(element: HTMLElement): Promise<void> {
   // Wait for fonts to be loaded
   await document.fonts.ready;
@@ -8,11 +52,10 @@ export async function exportGameBoardAsImage(element: HTMLElement): Promise<void
   // Clone the element for off-screen rendering
   const clone = element.cloneNode(true) as HTMLElement;
   
-  // Style clone to be rendered but scrolled out of view
-  // This avoids off-screen rendering issues with html2canvas
+  // Style clone to be off-screen but rendered at full size
   clone.style.position = 'absolute';
-  clone.style.left = '0';
-  clone.style.top = `${window.scrollY + window.innerHeight + 100}px`;
+  clone.style.left = '-9999px';
+  clone.style.top = '-9999px';
   clone.style.transform = 'none';
   clone.style.transformOrigin = 'top left';
   clone.style.width = `${GAME_BOARD_WIDTH}px`;
@@ -53,18 +96,40 @@ export async function exportGameBoardAsImage(element: HTMLElement): Promise<void
     }
   });
   
-  // Fix SVG rendering issues with html2canvas
-  // Force SVG elements to have explicit positioning
+  // Convert SVG to image to avoid html2canvas SVG rendering issues
   const svgElement = clone.querySelector('.path-overlay') as SVGSVGElement;
   if (svgElement) {
-    // Ensure SVG has proper dimensions
-    svgElement.setAttribute('width', String(GAME_BOARD_WIDTH));
-    svgElement.setAttribute('height', String(GAME_BOARD_HEIGHT));
-    svgElement.style.width = `${GAME_BOARD_WIDTH}px`;
-    svgElement.style.height = `${GAME_BOARD_HEIGHT}px`;
-    svgElement.style.position = 'absolute';
-    svgElement.style.top = '0';
-    svgElement.style.left = '0';
+    try {
+      // Get SVG from the ORIGINAL element (not clone) to preserve correct rendering
+      const originalSvg = element.querySelector('.path-overlay') as SVGSVGElement;
+      if (originalSvg) {
+        const svgDataUrl = await svgToImage(originalSvg);
+        
+        // Create an img element to replace the SVG
+        const imgElement = document.createElement('img');
+        imgElement.src = svgDataUrl;
+        imgElement.style.position = 'absolute';
+        imgElement.style.top = '0';
+        imgElement.style.left = '0';
+        imgElement.style.width = `${GAME_BOARD_WIDTH}px`;
+        imgElement.style.height = `${GAME_BOARD_HEIGHT}px`;
+        imgElement.style.pointerEvents = 'none';
+        
+        // Replace SVG with img in clone
+        svgElement.parentNode?.replaceChild(imgElement, svgElement);
+        
+        // Wait for image to load
+        await new Promise<void>((resolve) => {
+          if (imgElement.complete) {
+            resolve();
+          } else {
+            imgElement.onload = () => resolve();
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to convert SVG to image, falling back to direct rendering:', err);
+    }
   }
   
   document.body.appendChild(clone);
