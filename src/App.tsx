@@ -13,7 +13,6 @@ import {
   PROP_TILE_TYPES,
   GAME_BOARD_WIDTH,
   GAME_BOARD_HEIGHT,
-  TOP_BAR_HEIGHT,
   ROOM_WIDTH,
   ROOM_HEIGHT_SMALL,
   ROOM_HEIGHT_LARGE,
@@ -23,6 +22,7 @@ import {
   ROOM_COLOR_OPTIONS,
   ROOM_COLORS,
   MAX_BREAKABLE_WALLS,
+  BOARD_MARGIN,
 } from './types';
 import { useI18n } from './i18n';
 import { exportGameBoardAsImage } from './utils/exportMap';
@@ -368,8 +368,7 @@ export default function App() {
           }
         }
         const x = Math.max(0, Math.min(GAME_BOARD_WIDTH - ROOM_WIDTH, boardX - ROOM_WIDTH / 2));
-        // Y position must be below the top bar
-        const y = Math.max(TOP_BAR_HEIGHT, Math.min(GAME_BOARD_HEIGHT - ROOM_HEIGHT_SMALL, boardY - ROOM_HEIGHT_SMALL / 2));
+        const y = Math.max(0, Math.min(GAME_BOARD_HEIGHT - ROOM_HEIGHT_SMALL, boardY - ROOM_HEIGHT_SMALL / 2));
         const newRoom: RoomData = {
           id: newRoomId,
           name: `${t.newRoom} ${prev.length + 1}`,
@@ -1062,9 +1061,8 @@ export default function App() {
           0,
           Math.min(GAME_BOARD_WIDTH - ROOM_WIDTH, d.startObjX + dx)
         );
-        // Y position must be below the top bar
         const newY = Math.max(
-          TOP_BAR_HEIGHT,
+          0,
           Math.min(GAME_BOARD_HEIGHT - roomHeight, d.startObjY + dy)
         );
         setRooms((prev) =>
@@ -1081,8 +1079,8 @@ export default function App() {
         const mouseY = (e.clientY - rect.top) / s;
 
         // Clamp to board bounds
-        const clampedX = Math.max(50, Math.min(GAME_BOARD_WIDTH - 50, mouseX));
-        const clampedY = Math.max(50, Math.min(GAME_BOARD_HEIGHT - 50, mouseY));
+        const clampedX = Math.max(BOARD_MARGIN, Math.min(GAME_BOARD_WIDTH - BOARD_MARGIN, mouseX));
+        const clampedY = Math.max(BOARD_MARGIN, Math.min(GAME_BOARD_HEIGHT - BOARD_MARGIN, mouseY));
         
         handleUpdateViaPoint(d.id, clampedX, clampedY);
       } else if (d.type === 'pathPort' && d.portType) {

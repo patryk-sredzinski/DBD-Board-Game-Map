@@ -70,10 +70,10 @@ body {
 
 .game-board-background {
   position: absolute;
-  top: 230px; /* TOP_BAR_HEIGHT - 20px overlap to fill transparent bottom of top bar */
+  top: 0;
   left: 0;
   width: 100%;
-  height: calc(100% - 230px);
+  height: 100%;
   object-fit: cover;
   user-select: none;
   pointer-events: none;
@@ -140,14 +140,14 @@ body {
 }
 
 .room-header {
-  padding: 10px;
-  border-bottom: 3px solid #6b5a42;
+  border-bottom-style: solid;
+  border-bottom-color: #6b5a42;
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
   position: relative;
   background: var(--room-header-color);
+  box-sizing: border-box;
 }
 
 .room-header::before {
@@ -183,7 +183,6 @@ body {
 .room-name {
   font-family: 'Kanit', sans-serif;
   font-weight: 700;
-  font-size: 22px;
   color: #fff;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -197,7 +196,6 @@ body {
 .room-name-input {
   font-family: 'Kanit', sans-serif;
   font-weight: 700;
-  font-size: 22px;
   color: #fff;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -213,28 +211,15 @@ body {
 
 .room-prop-tiles {
   display: flex;
-  gap: 3px;
-  padding: 1px 0;
   flex-wrap: wrap;
 }
 
 .prop-tile-group {
   display: flex;
-  gap: 2px;
   align-items: center;
 }
 
-.prop-tile-dot {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  display: inline-block;
-  border: 2px solid rgba(0, 0, 0, 0.3);
-}
-
 .prop-tile-icon {
-  width: 28px;
-  height: 28px;
   display: inline-block;
   object-fit: contain;
 }

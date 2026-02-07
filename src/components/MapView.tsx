@@ -1,9 +1,8 @@
 import { forwardRef, useEffect, useState, useRef, useCallback } from 'react';
-import { RoomData, PathConnection, GAME_BOARD_WIDTH, GAME_BOARD_HEIGHT, TOP_BAR_HEIGHT } from '../types';
+import { RoomData, PathConnection, GAME_BOARD_WIDTH, GAME_BOARD_HEIGHT } from '../types';
 import { useI18n } from '../i18n';
 import { RoomTile } from './LocationTile';
 import { PathOverlay } from './PathOverlay';
-import topBarImage from '../assets/top-bar.png';
 
 interface GameBoardViewProps {
   backgroundImage: string | null;
@@ -133,22 +132,6 @@ export const GameBoardView = forwardRef<HTMLDivElement, GameBoardViewProps>(
                 <span>{t.gameBoardPlaceholder}</span>
               </div>
             )}
-            {/* Top bar - reserved area */}
-            <img
-              src={topBarImage}
-              className="game-board-top-bar"
-              alt="Top bar"
-              draggable={false}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: GAME_BOARD_WIDTH,
-                height: 'auto',
-                zIndex: 5,
-                pointerEvents: 'none',
-              }}
-            />
             <PathOverlay
               paths={paths}
               rooms={rooms}

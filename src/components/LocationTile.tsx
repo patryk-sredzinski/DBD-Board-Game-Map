@@ -5,6 +5,16 @@ import {
   ROOM_WIDTH,
   ROOM_HEIGHT_SMALL,
   ROOM_HEIGHT_LARGE,
+  ROOM_HEADER_HEIGHT,
+  ROOM_BORDER_WIDTH,
+  ROOM_BORDER_RADIUS,
+  ROOM_HEADER_PADDING,
+  ROOM_HEADER_GAP,
+  ROOM_NAME_FONT_SIZE,
+  ROOM_INITIAL_ICON_SIZE,
+  ROOM_INITIAL_ICON_RADIUS,
+  ROOM_PROP_ICON_SIZE,
+  ROOM_PROP_GAP,
   PROP_TILE_TYPES,
   InitialPlacementValue,
   ROOM_COLORS,
@@ -89,6 +99,8 @@ export function RoomTile({
         width: ROOM_WIDTH,
         height: roomHeight,
         borderColor: roomColors.border,
+        borderWidth: ROOM_BORDER_WIDTH,
+        borderRadius: ROOM_BORDER_RADIUS,
       }}
       onMouseDown={(e) => {
         if (e.button === 0) onMouseDown(e);
@@ -110,12 +122,16 @@ export function RoomTile({
         style={{
           '--room-header-color': roomColors.header,
           '--room-texture': `url(${roomTexture})`,
+          padding: ROOM_HEADER_PADDING,
+          gap: ROOM_HEADER_GAP,
+          borderBottomWidth: ROOM_BORDER_WIDTH,
         } as React.CSSProperties}
       >
         <img
           src={getInitialPlacementIcon(room.initialPlacement)}
           alt={room.initialPlacement !== null ? `Placement ${room.initialPlacement}` : 'No placement'}
           className="initial-placement-icon"
+          style={{ width: ROOM_INITIAL_ICON_SIZE, height: ROOM_INITIAL_ICON_SIZE, borderRadius: ROOM_INITIAL_ICON_RADIUS }}
           draggable={false}
         />
         <div className="room-header-content">
@@ -123,6 +139,7 @@ export function RoomTile({
             <input
               ref={inputRef}
               className="room-name-input"
+              style={{ fontSize: ROOM_NAME_FONT_SIZE }}
               defaultValue={room.name}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -142,6 +159,7 @@ export function RoomTile({
           ) : (
             <div
               className="room-name"
+              style={{ fontSize: ROOM_NAME_FONT_SIZE }}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
@@ -151,12 +169,12 @@ export function RoomTile({
               {room.name}
             </div>
           )}
-          <div className="room-prop-tiles">
+          <div className="room-prop-tiles" style={{ gap: ROOM_PROP_GAP }}>
             {PROP_TILE_TYPES.map((type: PropTileType) => {
               const count = room.propTiles[type];
               if (count === 0) return null;
               return (
-                <div key={type} className="prop-tile-group">
+                <div key={type} className="prop-tile-group" style={{ gap: ROOM_PROP_GAP }}>
                   {Array.from({ length: count }).map((_, i) => (
                     <img
                       key={i}
@@ -164,6 +182,7 @@ export function RoomTile({
                       alt={type}
                       title={type}
                       className="prop-tile-icon"
+                      style={{ width: ROOM_PROP_ICON_SIZE, height: ROOM_PROP_ICON_SIZE }}
                       draggable={false}
                     />
                   ))}

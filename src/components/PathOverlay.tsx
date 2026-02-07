@@ -5,12 +5,20 @@ import {
   PATH_COLORS,
   PathType,
   PortSide,
-  PortPosition,
   ROOM_WIDTH,
   ROOM_HEIGHT_SMALL,
   ROOM_HEIGHT_LARGE,
   GAME_BOARD_WIDTH,
   GAME_BOARD_HEIGHT,
+  PATH_STROKE_WIDTH,
+  PATH_OUTLINE_WIDTH,
+  PATH_MARGIN,
+  PATH_EXTENSION,
+  PATH_ARROW_SIZE,
+  PATH_ICON_SIZE,
+  PATH_ICON_BORDER,
+  PORT_RADIUS,
+  PORT_HIT_RADIUS,
 } from '../types';
 
 // Helper to get room height based on size
@@ -114,8 +122,6 @@ interface RouteData {
 
 /* ========== Geometry Helpers ========== */
 
-const MARGIN = 20; // Margin from corners for ports
-
 function getRoomCenter(room: RoomData): Point {
   const roomHeight = getRoomHeight(room);
   return { x: room.x + ROOM_WIDTH / 2, y: room.y + roomHeight / 2 };
@@ -142,23 +148,23 @@ function getPortPoint(room: RoomData, side: PortSide, offset: number): Point {
   
   switch (side) {
     case 'top': {
-      const minX = room.x + MARGIN;
-      const maxX = room.x + ROOM_WIDTH - MARGIN;
+      const minX = room.x + PATH_MARGIN;
+      const maxX = room.x + ROOM_WIDTH - PATH_MARGIN;
       return { x: minX + (maxX - minX) * clampedOffset, y: room.y };
     }
     case 'bottom': {
-      const minX = room.x + MARGIN;
-      const maxX = room.x + ROOM_WIDTH - MARGIN;
+      const minX = room.x + PATH_MARGIN;
+      const maxX = room.x + ROOM_WIDTH - PATH_MARGIN;
       return { x: minX + (maxX - minX) * clampedOffset, y: room.y + roomHeight };
     }
     case 'left': {
-      const minY = room.y + MARGIN;
-      const maxY = room.y + roomHeight - MARGIN;
+      const minY = room.y + PATH_MARGIN;
+      const maxY = room.y + roomHeight - PATH_MARGIN;
       return { x: room.x, y: minY + (maxY - minY) * clampedOffset };
     }
     case 'right': {
-      const minY = room.y + MARGIN;
-      const maxY = room.y + roomHeight - MARGIN;
+      const minY = room.y + PATH_MARGIN;
+      const maxY = room.y + roomHeight - PATH_MARGIN;
       return { x: room.x + ROOM_WIDTH, y: minY + (maxY - minY) * clampedOffset };
     }
   }
@@ -181,8 +187,8 @@ function getClosestPointOnPerimeter(room: RoomData, point: Point): { side: PortS
     switch (side) {
       case 'top':
       case 'bottom': {
-        const minX = room.x + MARGIN;
-        const maxX = room.x + ROOM_WIDTH - MARGIN;
+        const minX = room.x + PATH_MARGIN;
+        const maxX = room.x + ROOM_WIDTH - PATH_MARGIN;
         const clampedX = Math.max(minX, Math.min(maxX, point.x));
         offset = (clampedX - minX) / (maxX - minX);
         pt = { x: clampedX, y: side === 'top' ? room.y : room.y + roomHeight };
@@ -190,8 +196,8 @@ function getClosestPointOnPerimeter(room: RoomData, point: Point): { side: PortS
       }
       case 'left':
       case 'right': {
-        const minY = room.y + MARGIN;
-        const maxY = room.y + roomHeight - MARGIN;
+        const minY = room.y + PATH_MARGIN;
+        const maxY = room.y + roomHeight - PATH_MARGIN;
         const clampedY = Math.max(minY, Math.min(maxY, point.y));
         offset = (clampedY - minY) / (maxY - minY);
         pt = { x: side === 'left' ? room.x : room.x + ROOM_WIDTH, y: clampedY };
@@ -219,13 +225,12 @@ function buildOrthogonalPath(
   entrySide: PortSide,
   viaPoint?: Point
 ): Point[] {
-  const EXT_DIST = 50;
   
   const extDelta: Record<PortSide, Point> = {
-    right: { x: EXT_DIST, y: 0 },
-    left: { x: -EXT_DIST, y: 0 },
-    bottom: { x: 0, y: EXT_DIST },
-    top: { x: 0, y: -EXT_DIST },
+    right: { x: PATH_EXTENSION, y: 0 },
+    left: { x: -PATH_EXTENSION, y: 0 },
+    bottom: { x: 0, y: PATH_EXTENSION },
+    top: { x: 0, y: -PATH_EXTENSION },
   };
   
   const exitExt = { 
@@ -395,14 +400,13 @@ function computeRoutes(
     const isVault = path.color === 'yellow';
     let displayPoints = pts;
     if (isVault && pts.length >= 2) {
-      const arrowSize = 45;
       const lastPt = pts[n - 1];
       const prevPt = pts[n - 2];
       const dx = lastPt.x - prevPt.x;
       const dy = lastPt.y - prevPt.y;
       const segLen = Math.sqrt(dx * dx + dy * dy);
-      if (segLen > arrowSize) {
-        const ratio = (segLen - arrowSize) / segLen;
+      if (segLen > PATH_ARROW_SIZE) {
+        const ratio = (segLen - PATH_ARROW_SIZE) / segLen;
         const shortenedEnd = {
           x: prevPt.x + dx * ratio,
           y: prevPt.y + dy * ratio,
@@ -441,7 +445,10 @@ function getBreakableWallBorderPath(size: number, borderWidth: number, offsetX: 
   const totalSize = size + borderWidth;
   const baseOffset = -borderWidth / 2;
   
-  // Generate irregular edge with varying notches
+  // Scale notch depth based on icon size for print quality
+  const notchScale = size / 100;
+  
+  // Generate irregular edge with varying notches (cracked wall effect)
   const generateEdge = (
     startX: number, startY: number,
     endX: number, endY: number,
@@ -450,7 +457,7 @@ function getBreakableWallBorderPath(size: number, borderWidth: number, offsetX: 
   ): string => {
     const dx = endX - startX;
     const dy = endY - startY;
-    const segments = 8 + Math.floor(seededRandom(seed) * 4); // 8-11 segments
+    const segments = 12 + Math.floor(seededRandom(seed) * 6); // 12-17 segments for more detail
     
     let path = '';
     for (let i = 1; i < segments; i++) {
@@ -460,7 +467,7 @@ function getBreakableWallBorderPath(size: number, borderWidth: number, offsetX: 
       
       // Vary the notch depth and direction randomly
       const rand = seededRandom(seed + i * 7.3);
-      const depth = (rand - 0.3) * 6; // -1.8 to +4.2 depth, biased outward
+      const depth = (rand - 0.35) * 6.3 * notchScale; // Moderate notches, scaled to size
       
       path += `L ${px + outwardX * depth} ${py + outwardY * depth} `;
     }
@@ -513,15 +520,15 @@ function PortHandle({
   onMouseDown: (e: React.MouseEvent, pathId: string, portType: 'exit' | 'entry') => void;
 }) {
   const [hovered, setHovered] = useState(false);
-  const radius = hovered ? 9 : 12;
-  const strokeWidth = hovered ? 2 : 3;
+  const radius = hovered ? PORT_RADIUS * 0.75 : PORT_RADIUS;
+  const strokeWidth = hovered ? PORT_RADIUS * 0.17 : PORT_RADIUS * 0.25;
   
   return (
     <g className="port-handle">
       <circle
         cx={x}
         cy={y}
-        r={20}
+        r={PORT_HIT_RADIUS}
         fill="transparent"
         style={{ cursor: 'pointer' }}
         onMouseEnter={() => setHovered(true)}
@@ -566,8 +573,9 @@ function MovementIcon({
   onMouseDown: (e: React.MouseEvent) => void;
   onContextMenu: (e: React.MouseEvent) => void;
 }) {
-  const size = 102;
-  const innerBorderWidth = 6;
+  const size = PATH_ICON_SIZE;
+  const innerBorderWidth = PATH_ICON_BORDER;
+  const hitPadding = PATH_ICON_SIZE * 0.1; // 10% padding for easier clicking
   const offsetX = x - size / 2;
   const offsetY = y - size / 2;
   return (
@@ -577,10 +585,10 @@ function MovementIcon({
       onContextMenu={onContextMenu}
     >
       <rect
-        x={offsetX - innerBorderWidth / 2 - 10}
-        y={offsetY - innerBorderWidth / 2 - 10}
-        width={size + innerBorderWidth + 20}
-        height={size + innerBorderWidth + 20}
+        x={offsetX - innerBorderWidth / 2 - hitPadding}
+        y={offsetY - innerBorderWidth / 2 - hitPadding}
+        width={size + innerBorderWidth + hitPadding * 2}
+        height={size + innerBorderWidth + hitPadding * 2}
         fill="transparent"
         style={{ cursor: 'grab' }}
       />
@@ -635,9 +643,9 @@ function MovementIconOutline({
   y: number;
   hasBreakableWall: boolean;
 }) {
-  const size = 102;
-  const innerBorderWidth = 6;
-  const outlineWidth = 2.5;
+  const size = PATH_ICON_SIZE;
+  const innerBorderWidth = PATH_ICON_BORDER;
+  const outlineWidth = PATH_ICON_BORDER * 0.4;
   const totalSize = size + innerBorderWidth;
   const offsetX = x - size / 2;
   const offsetY = y - size / 2;
@@ -711,7 +719,7 @@ export function PathOverlay({
                 points={pointsStr}
                 fill="none"
                 stroke="#000"
-                strokeWidth={16}
+                strokeWidth={PATH_OUTLINE_WIDTH}
                 strokeLinejoin="miter"
                 strokeLinecap="butt"
               />
@@ -719,8 +727,8 @@ export function PathOverlay({
                 const n = route.points.length;
                 const tip = route.points[n - 1];
                 const angleDeg = (route.endAngle * 180) / Math.PI;
-                const sz = 48;
-                const outlineExtra = 3;
+                const sz = PATH_ARROW_SIZE;
+                const outlineExtra = PATH_ARROW_SIZE * 0.06;
                 return (
                   <g transform={`translate(${tip.x}, ${tip.y}) rotate(${angleDeg})`}>
                     <polygon
@@ -760,7 +768,7 @@ export function PathOverlay({
               points={pointsStr}
               fill="none"
               stroke="transparent"
-              strokeWidth={32}
+              strokeWidth={PATH_OUTLINE_WIDTH * 2}
               strokeLinejoin="miter"
               strokeLinecap="butt"
               style={{ pointerEvents: 'stroke' }}
@@ -769,7 +777,7 @@ export function PathOverlay({
               points={pointsStr}
               fill="none"
               stroke={route.color}
-              strokeWidth={12}
+              strokeWidth={PATH_STROKE_WIDTH}
               strokeLinejoin="miter"
               strokeLinecap="butt"
               style={{ pointerEvents: 'none' }}
@@ -779,7 +787,7 @@ export function PathOverlay({
               const n = route.points.length;
               const tip = route.points[n - 1];
               const angleDeg = (route.endAngle * 180) / Math.PI;
-              const sz = 48;
+              const sz = PATH_ARROW_SIZE;
               return (
                 <g transform={`translate(${tip.x}, ${tip.y}) rotate(${angleDeg})`}>
                   <polygon
