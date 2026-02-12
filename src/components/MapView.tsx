@@ -12,6 +12,7 @@ interface GameBoardViewProps {
   editingNameId: string | null;
   draggingId: string | null;
   onGameBoardContextMenu: (screenX: number, screenY: number, boardX: number, boardY: number) => void;
+  onGameBoardClick: (screenX: number, screenY: number, boardX: number, boardY: number) => void;
   onRoomContextMenu: (screenX: number, screenY: number, roomId: string) => void;
   onPathContextMenu: (screenX: number, screenY: number, pathId: string) => void;
   onRoomMouseDown: (e: React.MouseEvent, roomId: string) => void;
@@ -37,6 +38,7 @@ export const GameBoardView = forwardRef<HTMLDivElement, GameBoardViewProps>(
       editingNameId,
       draggingId,
       onGameBoardContextMenu,
+      onGameBoardClick,
       onRoomContextMenu,
       onPathContextMenu,
       onRoomMouseDown,
@@ -54,7 +56,8 @@ export const GameBoardView = forwardRef<HTMLDivElement, GameBoardViewProps>(
     const { t } = useI18n();
     const viewportRef = useRef<HTMLDivElement>(null);
     const innerRef = useRef<HTMLDivElement>(null);
-    const [scale, setScale] = useState(0.5);
+    const [scale, setScale] = useState(0);
+    const [scaleReady, setScaleReady] = useState(false);
 
     const updateScale = useCallback(() => {
       if (viewportRef.current) {
@@ -64,6 +67,7 @@ export const GameBoardView = forwardRef<HTMLDivElement, GameBoardViewProps>(
         const s = Math.min(scaleX, scaleY) * 0.95;
         setScale(s);
         scaleRef.current = s;
+        setScaleReady(true);
       }
     }, [scaleRef]);
 
@@ -92,6 +96,20 @@ export const GameBoardView = forwardRef<HTMLDivElement, GameBoardViewProps>(
       [scale, onGameBoardContextMenu]
     );
 
+    const handleClick = useCallback(
+      (e: React.MouseEvent) => {
+        if (e.button !== 0) return;
+        // Convert to game board coordinates
+        if (innerRef.current) {
+          const rect = innerRef.current.getBoundingClientRect();
+          const boardX = (e.clientX - rect.left) / scale;
+          const boardY = (e.clientY - rect.top) / scale;
+          onGameBoardClick(e.clientX, e.clientY, boardX, boardY);
+        }
+      },
+      [scale, onGameBoardClick]
+    );
+
     return (
       <div className="game-board-viewport" ref={viewportRef}>
         <div
@@ -101,6 +119,7 @@ export const GameBoardView = forwardRef<HTMLDivElement, GameBoardViewProps>(
             overflow: 'hidden',
             borderRadius: 8,
             boxShadow: '0 4px 30px rgba(0,0,0,0.6)',
+            visibility: scaleReady ? 'visible' : 'hidden',
           }}
         >
           <div
@@ -118,6 +137,7 @@ export const GameBoardView = forwardRef<HTMLDivElement, GameBoardViewProps>(
               transformOrigin: 'top left',
             }}
             onContextMenu={handleContextMenu}
+            onClick={handleClick}
           >
             {backgroundImage && (
               <img

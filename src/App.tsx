@@ -30,6 +30,8 @@ import { exportGameBoardAsImage } from './utils/exportMap';
 import { exportDbdMap, importDbdMap, downloadDbdMap } from './utils/dbdmapFormat';
 import { GameBoardView } from './components/MapView';
 import { ContextMenu, MenuItemDef } from './components/ContextMenu';
+import { Sidebar } from './components/Sidebar';
+import { StartScreen } from './components/StartScreen';
 import { getClosestPointOnPerimeter } from './components/PathOverlay';
 import './index.css';
 
@@ -49,6 +51,19 @@ import sneakIcon from './assets/movement/walk.png';
 import sprintIcon from './assets/movement/sprint.png';
 import crouchIcon from './assets/movement/crouch.png';
 import vaultIcon from './assets/movement/jump.png';
+
+// Prop tile icons
+import objectiveIcon from './assets/score/objective-tinted.png';
+import boldnessIcon from './assets/score/boldness-tinted.png';
+import survivalIcon from './assets/score/survival-tinted.png';
+import altruismIcon from './assets/score/altruism-tinted.png';
+
+const PROP_TILE_ICONS: Record<PropTileType, string> = {
+  objective: objectiveIcon,
+  boldness: boldnessIcon,
+  survival: survivalIcon,
+  altruism: altruismIcon,
+};
 
 const INITIAL_PLACEMENT_ICONS: Record<number | 'off', string> = {
   0: initialPlacement0,
@@ -84,6 +99,8 @@ interface DragState {
   startObjY: number;
   // For port dragging
   portType?: 'exit' | 'entry';
+  // Track if mouse actually moved (to distinguish click from drag)
+  didDrag?: boolean;
 }
 
 /* ============ App ============ */
@@ -96,7 +113,7 @@ export default function App() {
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [showStartScreen, setShowStartScreen] = useState(true);
   const [validationErrors, setValidationErrors] = useState<{ message: string; description: string }[] | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -110,6 +127,10 @@ export default function App() {
 
   // Connect mode - stores room ID and selected path type
   const [connectingFrom, setConnectingFrom] = useState<{ roomId: string; pathType: PathType } | null>(null);
+
+  // Mouse position for connect mode tooltip
+  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const mousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Inline name editing
   const [editingNameId, setEditingNameId] = useState<string | null>(null);
@@ -125,34 +146,43 @@ export default function App() {
   const bgInputRef = useRef<HTMLInputElement>(null);
   const roomInputRef = useRef<HTMLInputElement>(null);
   const roomInputTargetRef = useRef<string | null>(null);
+  // Flag to prevent board click from firing after a room/path click-open
+  const skipNextBoardClickRef = useRef(false);
 
   /* ============ Close menu ============ */
 
   const closeMenu = useCallback(() => setCtxMenu(null), []);
 
-  /* ============ Load initial gameboard ============ */
+  /* ============ Start screen actions ============ */
 
-  useEffect(() => {
-    async function loadInitialGameboard() {
-      try {
-        const response = await fetch(initialGameboardUrl);
-        const blob = await response.blob();
-        const file = new File([blob], 'initial-gameboard.dbdmap');
-        const data = await importDbdMap(file);
-        if (data) {
-          setRooms(data.rooms);
-          setPaths(data.paths);
-          if (data.backgroundImage) {
-            setBackgroundImage(data.backgroundImage);
-          }
+  const handleLoadExample = useCallback(async () => {
+    try {
+      const response = await fetch(initialGameboardUrl);
+      const blob = await response.blob();
+      const file = new File([blob], 'initial-gameboard.dbdmap');
+      const data = await importDbdMap(file);
+      if (data) {
+        setRooms(data.rooms);
+        setPaths(data.paths);
+        if (data.backgroundImage) {
+          setBackgroundImage(data.backgroundImage);
         }
-      } catch (err) {
-        console.error('Failed to load initial gameboard:', err);
-      } finally {
-        setInitialLoading(false);
       }
+    } catch (err) {
+      console.error('Failed to load example gameboard:', err);
     }
-    loadInitialGameboard();
+    setShowStartScreen(false);
+  }, []);
+
+  const handleStartFresh = useCallback(() => {
+    setRooms([]);
+    setPaths([]);
+    setBackgroundImage(null);
+    setShowStartScreen(false);
+  }, []);
+
+  const handleStartImport = useCallback(() => {
+    importInputRef.current?.click();
   }, []);
 
   /* ============ Background image ============ */
@@ -210,19 +240,28 @@ export default function App() {
       });
     }
 
-    // Check prop tiles (all must be used)
+    // Check prop tiles (all must be used, none can exceed limit)
     const missingPropTiles: string[] = [];
+    const excessPropTiles: string[] = [];
     for (const type of PROP_TILE_TYPES) {
       const totalUsed = rooms.reduce((s, r) => s + r.propTiles[type], 0);
-      const missing = PROP_TILE_LIMITS[type] - totalUsed;
-      if (missing > 0) {
-        missingPropTiles.push(`${propTileLabel(type)} (${missing})`);
+      const diff = PROP_TILE_LIMITS[type] - totalUsed;
+      if (diff > 0) {
+        missingPropTiles.push(`${propTileLabel(type)} (${diff})`);
+      } else if (diff < 0) {
+        excessPropTiles.push(`${propTileLabel(type)} (${totalUsed}/${PROP_TILE_LIMITS[type]})`);
       }
     }
     if (missingPropTiles.length > 0) {
       errors.push({
         message: `${t.validationMissingPropTiles} ${missingPropTiles.join(', ')}`,
         description: t.validationMissingPropTilesDesc || '',
+      });
+    }
+    if (excessPropTiles.length > 0) {
+      errors.push({
+        message: `${t.validationExcessPropTiles} ${excessPropTiles.join(', ')}`,
+        description: t.validationExcessPropTilesDesc || '',
       });
     }
 
@@ -349,6 +388,7 @@ export default function App() {
         setBackgroundImage(data.backgroundImage);
       }
       setImportError(null);
+      setShowStartScreen(false);
     } catch (err) {
       console.error('Import failed:', err);
       setImportError(t.importError || 'Import failed');
@@ -458,12 +498,10 @@ export default function App() {
   const handleUpdatePropTile = useCallback(
     (roomId: string, type: PropTileType, delta: number) => {
       setRooms((prev) => {
-        const totalCurrent = prev.reduce((s, r) => s + r.propTiles[type], 0);
         const room = prev.find((r) => r.id === roomId);
         if (!room) return prev;
         const newValue = room.propTiles[type] + delta;
         if (newValue < 0) return prev;
-        if (delta > 0 && totalCurrent >= PROP_TILE_LIMITS[type]) return prev;
         return prev.map((r) =>
           r.id === roomId
             ? { ...r, propTiles: { ...r.propTiles, [type]: newValue } }
@@ -566,6 +604,22 @@ export default function App() {
         return;
       }
       setCtxMenu({ type: 'gameBoard', x: screenX, y: screenY, boardX, boardY });
+    },
+    [connectingFrom]
+  );
+
+  const handleGameBoardClick = useCallback(
+    (_screenX: number, _screenY: number, _boardX: number, _boardY: number) => {
+      // Skip if a room/path click already opened a menu
+      if (skipNextBoardClickRef.current) {
+        skipNextBoardClickRef.current = false;
+        return;
+      }
+      if (connectingFrom) {
+        setConnectingFrom(null);
+        return;
+      }
+      // Left-click on background does nothing
     },
     [connectingFrom]
   );
@@ -715,9 +769,10 @@ export default function App() {
                 const current = room.propTiles[type];
                 return (
                   <div key={type} className="ctx-prop-tile-row">
-                    <span
-                      className="ctx-prop-tile-dot"
-                      style={{ backgroundColor: PROP_TILE_COLORS[type] }}
+                    <img
+                      className="ctx-prop-tile-icon"
+                      src={PROP_TILE_ICONS[type]}
+                      alt={propTileLabel(type)}
                     />
                     <span className="ctx-prop-tile-label">
                       {propTileLabel(type)}
@@ -735,7 +790,6 @@ export default function App() {
                     <span className="ctx-prop-tile-count">{current}</span>
                     <button
                       className="ctx-prop-tile-btn"
-                      disabled={remaining <= 0}
                       onMouseDown={(e) => {
                         e.stopPropagation();
                         handleUpdatePropTile(roomId, type, +1);
@@ -751,7 +805,7 @@ export default function App() {
         },
         { label: '', separator: true },
         {
-          label: 'Initial Placement',
+          label: t.initialPlacement,
           render: () => (
             <div style={{ paddingBottom: 2, paddingTop: 2 }}>
               <div
@@ -764,7 +818,7 @@ export default function App() {
                   fontWeight: 600,
                 }}
               >
-                Initial Placement
+                {t.initialPlacement}
               </div>
               <div className="ctx-initial-placement-options">
                 {/* No placement option */}
@@ -866,39 +920,35 @@ export default function App() {
 
       return [
         {
-          label: t.changeColor,
+          label: t.pathType,
           render: () => (
-            <div>
+            <div style={{ paddingBottom: 2, paddingTop: 2 }}>
               <div
                 style={{
                   fontSize: 11,
                   color: '#888',
                   textTransform: 'uppercase',
                   letterSpacing: 1,
-                  marginBottom: 4,
+                  marginBottom: 6,
                   fontWeight: 600,
-                  padding: '4px 0',
                 }}
               >
-                {t.changeColor}
+                {t.pathType}
               </div>
-              <div className="ctx-colors">
+              <div className="ctx-path-type-options">
                 {PATH_TYPE_OPTIONS.map((color) => (
                   <button
                     key={color}
-                    className="ctx-color-btn"
+                    className={`ctx-path-type-btn${path.color === color ? ' ctx-path-type-active' : ''}`}
                     title={pathLabel(color)}
-                    style={{
-                      backgroundColor: PATH_COLORS[color],
-                      outline:
-                        path.color === color ? '2px solid #fff' : 'none',
-                      outlineOffset: 2,
-                    }}
+                    style={{ borderColor: PATH_COLORS[color] }}
                     onMouseDown={(e) => {
                       e.stopPropagation();
                       handleChangePathType(pathId, color);
                     }}
-                  />
+                  >
+                    <img src={PATH_TYPE_ICONS[color]} alt={pathLabel(color)} />
+                  </button>
                 ))}
               </div>
             </div>
@@ -1047,10 +1097,21 @@ export default function App() {
   useEffect(() => {
     if (!dragging) return;
 
+    const DRAG_THRESHOLD = 5; // pixels before considered a drag
+
     const handleMouseMove = (e: MouseEvent) => {
       const d = draggingRef.current;
       if (!d) return;
       const s = scaleRef.current;
+
+      // Check if mouse moved enough to count as a drag
+      const pixelDx = Math.abs(e.clientX - d.startMouseX);
+      const pixelDy = Math.abs(e.clientY - d.startMouseY);
+      if (!d.didDrag && (pixelDx > DRAG_THRESHOLD || pixelDy > DRAG_THRESHOLD)) {
+        d.didDrag = true;
+      }
+      if (!d.didDrag) return;
+
       const dx = (e.clientX - d.startMouseX) / s;
       const dy = (e.clientY - d.startMouseY) / s;
 
@@ -1109,7 +1170,23 @@ export default function App() {
       }
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: MouseEvent) => {
+      const d = draggingRef.current;
+      if (d) {
+        if (!d.didDrag) {
+          // It was a click, not a drag — open the context menu
+          if (d.type === 'room') {
+            setCtxMenu({ type: 'room', x: e.clientX, y: e.clientY, roomId: d.id });
+            skipNextBoardClickRef.current = true;
+          } else if (d.type === 'pathIcon') {
+            setCtxMenu({ type: 'path', x: e.clientX, y: e.clientY, pathId: d.id });
+            skipNextBoardClickRef.current = true;
+          }
+        } else {
+          // It was a drag — suppress the board click event that follows mouseup
+          skipNextBoardClickRef.current = true;
+        }
+      }
       setDragging(null);
       draggingRef.current = null;
     };
@@ -1159,7 +1236,60 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKey);
   }, [connectingFrom]);
 
+  // Always track mouse position so tooltip can appear immediately
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      mousePosRef.current = { x: e.clientX, y: e.clientY };
+      if (connectingFrom) {
+        setMousePos({ x: e.clientX, y: e.clientY });
+      }
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, [connectingFrom]);
+
+  // Set initial tooltip position from ref when connect mode starts
+  useEffect(() => {
+    if (connectingFrom) {
+      setMousePos(mousePosRef.current);
+    }
+  }, [connectingFrom]);
+
+  /* ============ Sidebar handlers ============ */
+
+  const handleSidebarAddRoom = useCallback(() => {
+    // Add room at center of board
+    handleAddRoom(GAME_BOARD_WIDTH / 2, GAME_BOARD_HEIGHT / 2);
+  }, [handleAddRoom]);
+
+  const handleSidebarChangeBackground = useCallback(() => {
+    bgInputRef.current?.click();
+  }, []);
+
+  const handleSidebarClear = useCallback(() => {
+    setShowClearConfirm(true);
+  }, []);
+
   /* ============ Render ============ */
+
+  if (showStartScreen) {
+    return (
+      <div className="app">
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".dbdmap"
+          style={{ display: 'none' }}
+          onChange={handleImportFile}
+        />
+        <StartScreen
+          onLoadExample={handleLoadExample}
+          onImport={handleStartImport}
+          onStartFresh={handleStartFresh}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -1186,6 +1316,19 @@ export default function App() {
         onChange={handleImportFile}
       />
 
+      <Sidebar
+        downloading={downloading}
+        exporting={exporting}
+        rooms={rooms}
+        paths={paths}
+        onAddRoom={handleSidebarAddRoom}
+        onChangeBackground={handleSidebarChangeBackground}
+        onExport={handleExport}
+        onImport={handleImportOpen}
+        onClear={handleSidebarClear}
+        onDownload={handleDownload}
+      />
+
       <div className="game-board-section">
         <GameBoardView
           ref={gameBoardRef}
@@ -1196,6 +1339,7 @@ export default function App() {
           editingNameId={editingNameId}
           draggingId={dragging?.type === 'room' ? dragging.id : null}
           onGameBoardContextMenu={handleGameBoardContextMenu}
+          onGameBoardClick={handleGameBoardClick}
           onRoomContextMenu={handleRoomContextMenu}
           onPathContextMenu={handlePathContextMenu}
           onRoomMouseDown={handleRoomMouseDown}
@@ -1220,13 +1364,18 @@ export default function App() {
         />
       )}
 
-      {/* Status bar */}
-      <div className="status-bar">
-        {connectingFrom !== null && (
-          <span className="status-hint">{t.connectMode}</span>
-        )}
-        {connectingFrom === null && <span>{t.rightClickHint}</span>}
-      </div>
+      {/* Connect mode cursor tooltip */}
+      {connectingFrom && (
+        <div
+          className="connect-tooltip"
+          style={{
+            left: mousePos.x + 16,
+            top: mousePos.y + 16,
+          }}
+        >
+          {t.connectModeHint}
+        </div>
+      )}
 
       {/* Validation Error Modal */}
       {validationErrors && (

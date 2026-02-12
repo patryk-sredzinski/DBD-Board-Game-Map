@@ -1,5 +1,6 @@
 import html2canvas from 'html2canvas';
-import { GAME_BOARD_WIDTH, GAME_BOARD_HEIGHT } from '../types';
+import { jsPDF } from 'jspdf';
+import { GAME_BOARD_WIDTH, GAME_BOARD_HEIGHT, GAME_BOARD_WIDTH_MM, GAME_BOARD_HEIGHT_MM } from '../types';
 
 // Convert an image URL to a data URL
 async function imageToDataUrl(url: string): Promise<string> {
@@ -187,20 +188,25 @@ export async function exportGameBoardAsImage(element: HTMLElement): Promise<void
       logging: false,
     });
 
-    // Download
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        throw new Error('Failed to create blob');
-      }
-      const url = URL.createObjectURL(blob);
+    // Download PNG
+    const pngDataUrl = canvas.toDataURL('image/png');
+    {
       const link = document.createElement('a');
       link.download = 'dbd-game-board.png';
-      link.href = url;
+      link.href = pngDataUrl;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }, 'image/png');
+    }
+
+    // Download PDF (A2 landscape, no margins)
+    const pdf = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: [GAME_BOARD_WIDTH_MM, GAME_BOARD_HEIGHT_MM],
+    });
+    pdf.addImage(pngDataUrl, 'PNG', 0, 0, GAME_BOARD_WIDTH_MM, GAME_BOARD_HEIGHT_MM);
+    pdf.save('dbd-game-board.pdf');
   } finally {
     // Remove clone
     document.body.removeChild(clone);

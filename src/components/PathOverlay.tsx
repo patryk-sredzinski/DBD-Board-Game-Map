@@ -539,6 +539,10 @@ function PortHandle({
             onMouseDown(e, pathId, portType);
           }
         }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
       />
       <circle
         cx={x}
@@ -758,21 +762,7 @@ export function PathOverlay({
           <g
             key={route.id}
             className="path-group"
-            onContextMenu={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onPathContextMenu(e, route.id);
-            }}
           >
-            <polyline
-              points={pointsStr}
-              fill="none"
-              stroke="transparent"
-              strokeWidth={PATH_OUTLINE_WIDTH * 2}
-              strokeLinejoin="miter"
-              strokeLinecap="butt"
-              style={{ pointerEvents: 'stroke' }}
-            />
             <polyline
               points={pointsStr}
               fill="none"

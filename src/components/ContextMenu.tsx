@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useLayoutEffect } from 'react';
-import { useI18n, LANGUAGES } from '../i18n';
 
 export interface MenuItemDef {
   label: string;
@@ -20,7 +19,6 @@ interface ContextMenuProps {
 
 export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
-  const { lang, setLang } = useI18n();
   const [position, setPosition] = useState<{ left: number; top: number; maxHeight?: number } | null>(null);
 
   useEffect(() => {
@@ -120,24 +118,6 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
           </div>
         );
       })}
-
-      {/* Language flags — always shown at the bottom */}
-      <div className="ctx-sep" />
-      <div className="ctx-flags">
-        {LANGUAGES.map((l) => (
-          <button
-            key={l.id}
-            className={`ctx-flag-btn${lang === l.id ? ' ctx-flag-active' : ''}`}
-            title={l.label}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              setLang(l.id);
-            }}
-          >
-            {l.flag}
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
