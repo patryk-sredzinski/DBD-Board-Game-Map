@@ -39,8 +39,9 @@ export const PATH_ICON_BORDER_MM = 1.5;          // Movement icon border width
 export const PORT_RADIUS_MM = 3;                 // Port handle radius
 export const PORT_HIT_RADIUS_MM = 5;             // Port clickable area
 
-// Minimum board margin for via points
-export const BOARD_MARGIN_MM = 13;
+// Board margins
+export const BOARD_MARGIN_MM = 13;               // Margin for via points
+export const BOARD_EDGE_PADDING_MM = 5;          // Padding from board edges for rooms
 
 /* ============ Dimensions in pixels (calculated from mm at 300 DPI) ============ */
 
@@ -74,8 +75,9 @@ export const PATH_ICON_BORDER = mmToPx(PATH_ICON_BORDER_MM);
 export const PORT_RADIUS = mmToPx(PORT_RADIUS_MM);
 export const PORT_HIT_RADIUS = mmToPx(PORT_HIT_RADIUS_MM);
 
-// Board margin
+// Board margins
 export const BOARD_MARGIN = mmToPx(BOARD_MARGIN_MM);
+export const BOARD_EDGE_PADDING = mmToPx(BOARD_EDGE_PADDING_MM);
 
 export type PropTileType = 'objective' | 'boldness' | 'survival' | 'altruism';
 export type PathType = 'red' | 'green' | 'blue' | 'yellow';

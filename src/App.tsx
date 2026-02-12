@@ -23,6 +23,7 @@ import {
   ROOM_COLORS,
   MAX_BREAKABLE_WALLS,
   BOARD_MARGIN,
+  BOARD_EDGE_PADDING,
 } from './types';
 import { useI18n } from './i18n';
 import { exportGameBoardAsImage } from './utils/exportMap';
@@ -367,8 +368,8 @@ export default function App() {
             propTiles[type] = 1;
           }
         }
-        const x = Math.max(0, Math.min(GAME_BOARD_WIDTH - ROOM_WIDTH, boardX - ROOM_WIDTH / 2));
-        const y = Math.max(0, Math.min(GAME_BOARD_HEIGHT - ROOM_HEIGHT_SMALL, boardY - ROOM_HEIGHT_SMALL / 2));
+        const x = Math.max(BOARD_EDGE_PADDING, Math.min(GAME_BOARD_WIDTH - ROOM_WIDTH - BOARD_EDGE_PADDING, boardX - ROOM_WIDTH / 2));
+        const y = Math.max(BOARD_EDGE_PADDING, Math.min(GAME_BOARD_HEIGHT - ROOM_HEIGHT_SMALL - BOARD_EDGE_PADDING, boardY - ROOM_HEIGHT_SMALL / 2));
         const newRoom: RoomData = {
           id: newRoomId,
           name: `${t.newRoom} ${prev.length + 1}`,
@@ -1058,12 +1059,12 @@ export default function App() {
         const roomHeight = room?.size === 'large' ? ROOM_HEIGHT_LARGE : ROOM_HEIGHT_SMALL;
         
         const newX = Math.max(
-          0,
-          Math.min(GAME_BOARD_WIDTH - ROOM_WIDTH, d.startObjX + dx)
+          BOARD_EDGE_PADDING,
+          Math.min(GAME_BOARD_WIDTH - ROOM_WIDTH - BOARD_EDGE_PADDING, d.startObjX + dx)
         );
         const newY = Math.max(
-          0,
-          Math.min(GAME_BOARD_HEIGHT - roomHeight, d.startObjY + dy)
+          BOARD_EDGE_PADDING,
+          Math.min(GAME_BOARD_HEIGHT - roomHeight - BOARD_EDGE_PADDING, d.startObjY + dy)
         );
         setRooms((prev) =>
           prev.map((r) =>
