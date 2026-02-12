@@ -100,6 +100,7 @@ export default function App() {
   const [validationErrors, setValidationErrors] = useState<{ message: string; description: string }[] | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   
   // File input ref for .dbdmap import
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -620,10 +621,10 @@ export default function App() {
         { label: '', separator: true },
         {
           label: t.clearGameBoard || 'Clear Game Board',
+          danger: true,
           onClick: () => {
-            setRooms([]);
-            setPaths([]);
             closeMenu();
+            setShowClearConfirm(true);
           },
         },
         { label: '', separator: true },
@@ -1251,6 +1252,41 @@ export default function App() {
             >
               {t.validationClose}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Clear Game Board Confirmation Modal */}
+      {showClearConfirm && (
+        <div className="validation-modal-overlay" onClick={() => setShowClearConfirm(false)}>
+          <div className="validation-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="validation-modal-header">
+              <span className="validation-modal-icon">⚠️</span>
+              <h2>{t.clearGameBoard}</h2>
+            </div>
+            <div className="validation-modal-content">
+              <p className="success-message">{t.clearGameBoardConfirm}</p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button
+                className="validation-modal-close"
+                onClick={() => setShowClearConfirm(false)}
+              >
+                {t.cancel}
+              </button>
+              <button
+                className="validation-modal-close"
+                style={{ backgroundColor: '#cc3333', borderColor: '#cc3333' }}
+                onClick={() => {
+                  setRooms([]);
+                  setPaths([]);
+                  setBackgroundImage(null);
+                  setShowClearConfirm(false);
+                }}
+              >
+                {t.clearGameBoard}
+              </button>
+            </div>
           </div>
         </div>
       )}
