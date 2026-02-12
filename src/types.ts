@@ -14,9 +14,9 @@ export const GAME_BOARD_WIDTH_MM = 594;
 export const GAME_BOARD_HEIGHT_MM = 420;
 
 // Room tiles
-export const ROOM_WIDTH_MM = 130;
-export const ROOM_HEIGHT_SMALL_MM = 75;
-export const ROOM_HEIGHT_LARGE_MM = 115;
+export const ROOM_WIDTH_MM = 100;
+export const ROOM_HEIGHT_SMALL_MM = 60;
+export const ROOM_HEIGHT_LARGE_MM = 100;
 export const ROOM_HEADER_HEIGHT_MM = 17.5;       // Room header bar height (1.75cm)
 export const ROOM_BORDER_WIDTH_MM = 1;           // Room border width
 export const ROOM_HEADER_PADDING_MM = 1.5;       // Room header padding
@@ -29,12 +29,12 @@ export const ROOM_BORDER_RADIUS_MM = 3;          // Room corner radius
 export const ROOM_INITIAL_ICON_RADIUS_MM = 1.5;  // Initial placement icon corner radius
 
 // Path elements
-export const PATH_STROKE_WIDTH_MM = 3;           // Main path line width
-export const PATH_OUTLINE_WIDTH_MM = 4;          // Outline behind path
+export const PATH_STROKE_WIDTH_MM = 1.5;         // Main path line width
+export const PATH_OUTLINE_WIDTH_MM = 2.5;        // Outline behind path
 export const PATH_MARGIN_MM = 5;                 // Margin from room corners for ports
 export const PATH_EXTENSION_MM = 13;             // How far path extends from port before routing
-export const PATH_ARROW_SIZE_MM = 12;            // Vault arrow size
-export const PATH_ICON_SIZE_MM = 30;             // Movement icon size (inner icon, 3cm x 3cm)
+export const PATH_ARROW_SIZE_MM = 8;            // Vault arrow size
+export const PATH_ICON_SIZE_MM = 22;             // Movement icon size (inner icon, 3cm x 3cm)
 export const PATH_ICON_BORDER_MM = 1.5;          // Movement icon border width
 export const PORT_RADIUS_MM = 3;                 // Port handle radius
 export const PORT_HIT_RADIUS_MM = 5;             // Port clickable area
@@ -143,7 +143,7 @@ export const PROP_TILE_COLORS: Record<PropTileType, string> = {
 export const PATH_COLORS: Record<PathType, string> = {
   red: '#cc2222',
   green: '#22aa44',
-  blue: '#2266cc',
+  blue: '#0E98FF',
   yellow: '#ccaa22',
 };
 

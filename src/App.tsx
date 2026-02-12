@@ -377,7 +377,7 @@ export default function App() {
           y,
           propTiles,
           initialPlacement: null,
-          color: 'blue',
+          color: 'purple',
           size: 'small',
         };
         return [...prev, newRoom];
