@@ -396,22 +396,29 @@ function computeRoutes(
       pts[n - 1].x - pts[n - 2].x
     );
 
-    // For vault (yellow) paths, shorten display line
+    // For vault (yellow) paths, shorten display line so it ends at the arrow base
     const isVault = path.color === 'yellow';
     let displayPoints = pts;
     if (isVault && pts.length >= 2) {
-      const lastPt = pts[n - 1];
-      const prevPt = pts[n - 2];
-      const dx = lastPt.x - prevPt.x;
-      const dy = lastPt.y - prevPt.y;
-      const segLen = Math.sqrt(dx * dx + dy * dy);
-      if (segLen > PATH_ARROW_SIZE) {
-        const ratio = (segLen - PATH_ARROW_SIZE) / segLen;
-        const shortenedEnd = {
-          x: prevPt.x + dx * ratio,
-          y: prevPt.y + dy * ratio,
-        };
-        displayPoints = [...pts.slice(0, -1), shortenedEnd];
+      const tLen = totalPathLength(pts);
+      const targetLen = tLen - PATH_ARROW_SIZE;
+      if (targetLen > 0) {
+        const cutPoint = pointAtDistance(pts, targetLen);
+        // Rebuild points: keep all full segments before the cut, then add the cut point
+        let accumulated = 0;
+        const newPoints: Point[] = [pts[0]];
+        for (let i = 1; i < pts.length; i++) {
+          const dx = pts[i].x - pts[i - 1].x;
+          const dy = pts[i].y - pts[i - 1].y;
+          const segLen = Math.sqrt(dx * dx + dy * dy);
+          if (accumulated + segLen >= targetLen) {
+            newPoints.push(cutPoint);
+            break;
+          }
+          newPoints.push(pts[i]);
+          accumulated += segLen;
+        }
+        displayPoints = newPoints;
       }
     }
 

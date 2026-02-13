@@ -657,11 +657,12 @@ body {
   color: #fff;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  line-height: 1.1;
+  line-height: 1.35;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: text;
+  padding-top: 1px;
 }
 
 .room-name-input {
@@ -670,12 +671,12 @@ body {
   color: #fff;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  line-height: 1.1;
+  line-height: 1.35;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid #c9a84c;
   border-radius: 3px;
   outline: none;
-  padding: 0 4px;
+  padding: 1px 4px 0;
   width: 100%;
   display: block;
 }

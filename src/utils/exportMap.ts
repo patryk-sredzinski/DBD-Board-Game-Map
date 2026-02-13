@@ -106,11 +106,26 @@ export async function exportGameBoardAsImage(element: HTMLElement): Promise<void
     (el as HTMLElement).style.display = 'none';
   });
   
-  // Adjust background to extend under the top bar for seamless rendering
-  const bgImage = clone.querySelector('.game-board-background') as HTMLElement;
+  // Fix background image - html2canvas doesn't support object-fit properly
+  // Replace img element with div using background-image
+  const bgImage = clone.querySelector('.game-board-background') as HTMLImageElement;
   if (bgImage) {
-    bgImage.style.top = '0';
-    bgImage.style.height = '100%';
+    const src = bgImage.src;
+    const container = bgImage.parentElement;
+    if (container && src) {
+      const div = document.createElement('div');
+      div.style.position = 'absolute';
+      div.style.top = '0';
+      div.style.left = '0';
+      div.style.width = '100%';
+      div.style.height = '100%';
+      div.style.backgroundImage = `url("${src}")`;
+      div.style.backgroundSize = 'cover';
+      div.style.backgroundPosition = 'center';
+      div.style.zIndex = '0';
+      // Insert right after the original img to keep it behind paths and rooms
+      bgImage.replaceWith(div);
+    }
   }
   
   // Fix room images - html2canvas doesn't support object-fit properly
@@ -188,18 +203,8 @@ export async function exportGameBoardAsImage(element: HTMLElement): Promise<void
       logging: false,
     });
 
-    // Download PNG
-    const pngDataUrl = canvas.toDataURL('image/png');
-    {
-      const link = document.createElement('a');
-      link.download = 'dbd-game-board.png';
-      link.href = pngDataUrl;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-
     // Download PDF (A2 landscape, no margins)
+    const pngDataUrl = canvas.toDataURL('image/png');
     const pdf = new jsPDF({
       orientation: 'landscape',
       unit: 'mm',
