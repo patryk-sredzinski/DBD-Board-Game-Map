@@ -13,20 +13,20 @@ export function mmToPx(mm: number): number {
 export const GAME_BOARD_WIDTH_MM = 594;
 export const GAME_BOARD_HEIGHT_MM = 420;
 
-// Room tiles
-export const ROOM_WIDTH_MM = 100;
-export const ROOM_HEIGHT_SMALL_MM = 60;
-export const ROOM_HEIGHT_LARGE_MM = 100;
-export const ROOM_HEADER_HEIGHT_MM = 17.5;       // Room header bar height (1.75cm)
-export const ROOM_BORDER_WIDTH_MM = 1;           // Room border width
-export const ROOM_HEADER_PADDING_MM = 1.5;       // Room header padding
-export const ROOM_HEADER_GAP_MM = 2;             // Gap between header elements
-export const ROOM_NAME_FONT_SIZE_MM = 4;         // Room name font size
-export const ROOM_INITIAL_ICON_SIZE_MM = 10;     // Initial placement icon size
-export const ROOM_PROP_ICON_SIZE_MM = 6;         // Prop tile icon size
-export const ROOM_PROP_GAP_MM = 0.5;             // Gap between prop icons
-export const ROOM_BORDER_RADIUS_MM = 3;          // Room corner radius
-export const ROOM_INITIAL_ICON_RADIUS_MM = 1.5;  // Initial placement icon corner radius
+// Room tiles (scaled 15% up from original)
+export const ROOM_WIDTH_MM = 115;
+export const ROOM_HEIGHT_SMALL_MM = 69;
+export const ROOM_HEIGHT_LARGE_MM = 115;
+export const ROOM_HEADER_HEIGHT_MM = 20;         // Room header bar height
+export const ROOM_BORDER_WIDTH_MM = 1.15;        // Room border width
+export const ROOM_HEADER_PADDING_MM = 1.75;      // Room header padding
+export const ROOM_HEADER_GAP_MM = 2.3;           // Gap between header elements
+export const ROOM_NAME_FONT_SIZE_MM = 4.6;       // Room name font size
+export const ROOM_INITIAL_ICON_SIZE_MM = 11.5;   // Initial placement icon size
+export const ROOM_PROP_ICON_SIZE_MM = 7;         // Prop tile icon size
+export const ROOM_PROP_GAP_MM = 0.575;           // Gap between prop icons
+export const ROOM_BORDER_RADIUS_MM = 3.45;       // Room corner radius
+export const ROOM_INITIAL_ICON_RADIUS_MM = 1.75; // Initial placement icon corner radius
 
 // Path elements
 export const PATH_STROKE_WIDTH_MM = 1.5;         // Main path line width
@@ -34,8 +34,8 @@ export const PATH_OUTLINE_WIDTH_MM = 2.5;        // Outline behind path
 export const PATH_MARGIN_MM = 5;                 // Margin from room corners for ports
 export const PATH_EXTENSION_MM = 6;              // How far path extends from port before routing
 export const PATH_ARROW_SIZE_MM = 8;             // Vault arrow size
-export const PATH_ICON_SIZE_MM = 22;             // Movement icon size (inner icon, 3cm x 3cm)
-export const PATH_ICON_BORDER_MM = 1.5;          // Movement icon border width
+export const PATH_ICON_SIZE_MM = 25.3;           // Movement icon size (scaled 15% up)
+export const PATH_ICON_BORDER_MM = 1.725;        // Movement icon border width (scaled 15% up)
 export const PORT_RADIUS_MM = 3;                 // Port handle radius
 export const PORT_HIT_RADIUS_MM = 5;             // Port clickable area
 
