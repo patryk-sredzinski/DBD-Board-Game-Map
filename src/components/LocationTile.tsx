@@ -124,7 +124,6 @@ export function RoomTile({
           '--room-texture': `url(${roomTexture})`,
           padding: ROOM_HEADER_PADDING,
           gap: ROOM_HEADER_GAP,
-          borderBottomWidth: ROOM_BORDER_WIDTH,
         } as React.CSSProperties}
       >
         <img

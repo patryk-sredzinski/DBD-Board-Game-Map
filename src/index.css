@@ -611,7 +611,7 @@ body {
 }
 
 .room-header {
-  border-bottom-style: solid;
+  border-bottom-style: none;
   border-bottom-color: #6b5a42;
   flex-shrink: 0;
   display: flex;

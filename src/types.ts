@@ -17,16 +17,16 @@ export const GAME_BOARD_HEIGHT_MM = 420;
 export const ROOM_WIDTH_MM = 115;
 export const ROOM_HEIGHT_SMALL_MM = 69;
 export const ROOM_HEIGHT_LARGE_MM = 115;
-export const ROOM_HEADER_HEIGHT_MM = 20;         // Room header bar height
-export const ROOM_BORDER_WIDTH_MM = 1.15;        // Room border width
-export const ROOM_HEADER_PADDING_MM = 1.75;      // Room header padding
-export const ROOM_HEADER_GAP_MM = 2.3;           // Gap between header elements
-export const ROOM_NAME_FONT_SIZE_MM = 4.6;       // Room name font size
-export const ROOM_INITIAL_ICON_SIZE_MM = 11.5;   // Initial placement icon size
+export const ROOM_HEADER_HEIGHT_MM = 17.5;       // Room header bar height
+export const ROOM_BORDER_WIDTH_MM = 1;           // Room border width
+export const ROOM_HEADER_PADDING_MM = 1.5;       // Room header padding
+export const ROOM_HEADER_GAP_MM = 2;             // Gap between header elements
+export const ROOM_NAME_FONT_SIZE_MM = 5;         // Room name font size
+export const ROOM_INITIAL_ICON_SIZE_MM = 13;     // Initial placement icon size
 export const ROOM_PROP_ICON_SIZE_MM = 7;         // Prop tile icon size
-export const ROOM_PROP_GAP_MM = 0.575;           // Gap between prop icons
-export const ROOM_BORDER_RADIUS_MM = 3.45;       // Room corner radius
-export const ROOM_INITIAL_ICON_RADIUS_MM = 1.75; // Initial placement icon corner radius
+export const ROOM_PROP_GAP_MM = 1;               // Gap between prop icons
+export const ROOM_BORDER_RADIUS_MM = 3;          // Room corner radius
+export const ROOM_INITIAL_ICON_RADIUS_MM = 2;    // Initial placement icon corner radius
 
 // Path elements
 export const PATH_STROKE_WIDTH_MM = 1.5;         // Main path line width
