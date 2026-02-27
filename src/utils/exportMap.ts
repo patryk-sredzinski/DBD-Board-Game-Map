@@ -2,6 +2,8 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { GAME_BOARD_WIDTH, GAME_BOARD_HEIGHT, GAME_BOARD_WIDTH_MM, GAME_BOARD_HEIGHT_MM } from '../types';
 
+export type PdfFormat = 'a2' | '2xa3';
+
 // Convert an image URL to a data URL
 async function imageToDataUrl(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -85,7 +87,7 @@ async function svgToImage(svgElement: SVGSVGElement): Promise<string> {
   });
 }
 
-export async function exportGameBoardAsImage(element: HTMLElement): Promise<void> {
+export async function exportGameBoardAsImage(element: HTMLElement, format: PdfFormat = 'a2'): Promise<void> {
   // Wait for fonts to be loaded
   await document.fonts.ready;
 
@@ -203,15 +205,42 @@ export async function exportGameBoardAsImage(element: HTMLElement): Promise<void
       logging: false,
     });
 
-    // Download PDF (A2 landscape, no margins)
-    const pngDataUrl = canvas.toDataURL('image/png');
-    const pdf = new jsPDF({
-      orientation: 'landscape',
-      unit: 'mm',
-      format: [GAME_BOARD_WIDTH_MM, GAME_BOARD_HEIGHT_MM],
-    });
-    pdf.addImage(pngDataUrl, 'PNG', 0, 0, GAME_BOARD_WIDTH_MM, GAME_BOARD_HEIGHT_MM);
-    pdf.save('dbd-game-board.pdf');
+    if (format === '2xa3') {
+      const halfWidth = Math.floor(canvas.width / 2);
+      const a3WidthMm = GAME_BOARD_WIDTH_MM / 2; // 297mm
+      const a3HeightMm = GAME_BOARD_HEIGHT_MM;    // 420mm
+
+      const leftCanvas = document.createElement('canvas');
+      leftCanvas.width = halfWidth;
+      leftCanvas.height = canvas.height;
+      const leftCtx = leftCanvas.getContext('2d')!;
+      leftCtx.drawImage(canvas, 0, 0, halfWidth, canvas.height, 0, 0, halfWidth, canvas.height);
+
+      const rightCanvas = document.createElement('canvas');
+      rightCanvas.width = canvas.width - halfWidth;
+      rightCanvas.height = canvas.height;
+      const rightCtx = rightCanvas.getContext('2d')!;
+      rightCtx.drawImage(canvas, halfWidth, 0, canvas.width - halfWidth, canvas.height, 0, 0, canvas.width - halfWidth, canvas.height);
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [a3WidthMm, a3HeightMm],
+      });
+      pdf.addImage(leftCanvas.toDataURL('image/png'), 'PNG', 0, 0, a3WidthMm, a3HeightMm);
+      pdf.addPage([a3WidthMm, a3HeightMm], 'portrait');
+      pdf.addImage(rightCanvas.toDataURL('image/png'), 'PNG', 0, 0, a3WidthMm, a3HeightMm);
+      pdf.save('dbd-game-board-2xA3.pdf');
+    } else {
+      const pngDataUrl = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: [GAME_BOARD_WIDTH_MM, GAME_BOARD_HEIGHT_MM],
+      });
+      pdf.addImage(pngDataUrl, 'PNG', 0, 0, GAME_BOARD_WIDTH_MM, GAME_BOARD_HEIGHT_MM);
+      pdf.save('dbd-game-board.pdf');
+    }
   } finally {
     // Remove clone
     document.body.removeChild(clone);

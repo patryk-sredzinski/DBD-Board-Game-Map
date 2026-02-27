@@ -26,7 +26,7 @@ import {
   BOARD_EDGE_PADDING,
 } from './types';
 import { useI18n } from './i18n';
-import { exportGameBoardAsImage } from './utils/exportMap';
+import { exportGameBoardAsImage, PdfFormat } from './utils/exportMap';
 import { exportDbdMap, importDbdMap, downloadDbdMap } from './utils/dbdmapFormat';
 import { GameBoardView } from './components/MapView';
 import { ContextMenu, MenuItemDef } from './components/ContextMenu';
@@ -118,6 +118,7 @@ export default function App() {
   const [importError, setImportError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showFormatPicker, setShowFormatPicker] = useState(false);
   
   // File input ref for .dbdmap import
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -323,19 +324,24 @@ export default function App() {
 
   /* ============ Download ============ */
 
-  const handleDownload = useCallback(async () => {
+  const handleDownload = useCallback(() => {
     if (!gameBoardRef.current) return;
 
-    // Validate first
     const errors = validateGameBoard();
     if (errors.length > 0) {
       setValidationErrors(errors);
       return;
     }
 
+    setShowFormatPicker(true);
+  }, [validateGameBoard]);
+
+  const handleDownloadWithFormat = useCallback(async (format: PdfFormat) => {
+    if (!gameBoardRef.current) return;
+    setShowFormatPicker(false);
     setDownloading(true);
     try {
-      await exportGameBoardAsImage(gameBoardRef.current);
+      await exportGameBoardAsImage(gameBoardRef.current, format);
       setSuccessMessage(t.downloadSuccess || 'Game board image downloaded successfully!');
     } catch (err) {
       console.error('Export failed:', err);
@@ -343,7 +349,7 @@ export default function App() {
     } finally {
       setDownloading(false);
     }
-  }, [t, validateGameBoard]);
+  }, [t]);
 
   /* ============ Import/Export .dbdmap ============ */
 
@@ -1436,6 +1442,40 @@ export default function App() {
                 {t.clearGameBoard}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* PDF Format Picker Modal */}
+      {showFormatPicker && (
+        <div className="validation-modal-overlay" onClick={() => setShowFormatPicker(false)}>
+          <div className="validation-modal format-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="validation-modal-header format-modal-header">
+              <span className="validation-modal-icon">📄</span>
+              <h2>{t.downloadFormatTitle}</h2>
+            </div>
+            <div className="format-options">
+              <button
+                className="format-option"
+                onClick={() => handleDownloadWithFormat('a2')}
+              >
+                <span className="format-option-label">{t.downloadFormatA2}</span>
+                <span className="format-option-desc">{t.downloadFormatA2Desc}</span>
+              </button>
+              <button
+                className="format-option"
+                onClick={() => handleDownloadWithFormat('2xa3')}
+              >
+                <span className="format-option-label">{t.downloadFormat2xA3}</span>
+                <span className="format-option-desc">{t.downloadFormat2xA3Desc}</span>
+              </button>
+            </div>
+            <button
+              className="validation-modal-close"
+              onClick={() => setShowFormatPicker(false)}
+            >
+              {t.cancel}
+            </button>
           </div>
         </div>
       )}
