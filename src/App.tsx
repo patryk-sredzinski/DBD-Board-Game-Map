@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   RoomData,
   PathConnection,
@@ -119,6 +119,10 @@ export default function App() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showFormatPicker, setShowFormatPicker] = useState(false);
+
+  // Verification mode
+  const [verificationMode, setVerificationMode] = useState(false);
+  const [verificationSourceRoom, setVerificationSourceRoom] = useState<string | null>(null);
   
   // File input ref for .dbdmap import
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -149,6 +153,45 @@ export default function App() {
   const roomInputTargetRef = useRef<string | null>(null);
   // Flag to prevent board click from firing after a room/path click-open
   const skipNextBoardClickRef = useRef(false);
+
+  /* ============ Verification mode: BFS distances ============ */
+
+  const verificationDistances = useMemo<Record<string, number>>(() => {
+    if (!verificationMode || !verificationSourceRoom) return {};
+    const sourceExists = rooms.some((r) => r.id === verificationSourceRoom);
+    if (!sourceExists) return {};
+
+    // Build adjacency list: non-yellow paths are bidirectional, yellow are from→to only.
+    // Paths with breakable walls are impassable.
+    const adj = new Map<string, Set<string>>();
+    for (const room of rooms) adj.set(room.id, new Set());
+
+    for (const path of paths) {
+      if (path.hasBreakableWall) continue;
+      adj.get(path.from)?.add(path.to);
+      if (path.color !== 'yellow') {
+        adj.get(path.to)?.add(path.from);
+      }
+    }
+
+    const dist: Record<string, number> = {};
+    const queue: string[] = [verificationSourceRoom];
+    dist[verificationSourceRoom] = 0;
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      const neighbors = adj.get(current);
+      if (!neighbors) continue;
+      for (const neighbor of neighbors) {
+        if (dist[neighbor] === undefined) {
+          dist[neighbor] = dist[current] + 1;
+          queue.push(neighbor);
+        }
+      }
+    }
+
+    return dist;
+  }, [verificationMode, verificationSourceRoom, rooms, paths]);
 
   /* ============ Close menu ============ */
 
@@ -1024,6 +1067,10 @@ export default function App() {
 
   const handleRoomClick = useCallback(
     (roomId: string, _e: React.MouseEvent) => {
+      if (verificationMode) {
+        setVerificationSourceRoom(roomId);
+        return;
+      }
       if (!connectingFrom || connectingFrom.roomId === roomId) return;
 
       const toId = roomId;
@@ -1031,16 +1078,16 @@ export default function App() {
       const pathType = connectingFrom.pathType;
       setConnectingFrom(null);
 
-      // Directly create the path with the pre-selected type
       handleAddPath(fromId, toId, pathType);
     },
-    [connectingFrom, handleAddPath]
+    [connectingFrom, handleAddPath, verificationMode]
   );
 
   /* ============ Drag: room & path icon/port ============ */
 
   const handleRoomMouseDown = useCallback(
     (e: React.MouseEvent, roomId: string) => {
+      if (verificationMode) return;
       if (connectingFrom !== null) return;
       if (e.button !== 0) return;
       e.preventDefault();
@@ -1058,7 +1105,7 @@ export default function App() {
       setDragging(state);
       draggingRef.current = state;
     },
-    [rooms, connectingFrom]
+    [rooms, connectingFrom, verificationMode]
   );
 
   const handleIconMouseDown = useCallback(
@@ -1236,11 +1283,15 @@ export default function App() {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (connectingFrom) setConnectingFrom(null);
+        if (verificationMode) {
+          setVerificationMode(false);
+          setVerificationSourceRoom(null);
+        }
       }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [connectingFrom]);
+  }, [connectingFrom, verificationMode]);
 
   // Always track mouse position so tooltip can appear immediately
   useEffect(() => {
@@ -1327,12 +1378,17 @@ export default function App() {
         exporting={exporting}
         rooms={rooms}
         paths={paths}
+        verificationMode={verificationMode}
         onAddRoom={handleSidebarAddRoom}
         onChangeBackground={handleSidebarChangeBackground}
         onExport={handleExport}
         onImport={handleImportOpen}
         onClear={handleSidebarClear}
         onDownload={handleDownload}
+        onToggleVerification={() => {
+          setVerificationMode((v) => !v);
+          if (verificationMode) setVerificationSourceRoom(null);
+        }}
       />
 
       <div className="game-board-section">
@@ -1344,6 +1400,9 @@ export default function App() {
           connectingFrom={connectingFrom?.roomId ?? null}
           editingNameId={editingNameId}
           draggingId={dragging?.type === 'room' ? dragging.id : null}
+          verificationMode={verificationMode}
+          verificationDistances={verificationDistances}
+          verificationSourceRoom={verificationSourceRoom}
           onGameBoardContextMenu={handleGameBoardContextMenu}
           onGameBoardClick={handleGameBoardClick}
           onRoomContextMenu={handleRoomContextMenu}
@@ -1380,6 +1439,13 @@ export default function App() {
           }}
         >
           {t.connectModeHint}
+        </div>
+      )}
+
+      {/* Verification mode hint banner */}
+      {verificationMode && !verificationSourceRoom && (
+        <div className="verification-hint-banner">
+          {t.verificationModeHint}
         </div>
       )}
 

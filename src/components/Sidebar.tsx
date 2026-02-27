@@ -42,12 +42,14 @@ interface SidebarProps {
   exporting: boolean;
   rooms: RoomData[];
   paths: PathConnection[];
+  verificationMode: boolean;
   onAddRoom: () => void;
   onChangeBackground: () => void;
   onExport: () => void;
   onImport: () => void;
   onClear: () => void;
   onDownload: () => void;
+  onToggleVerification: () => void;
 }
 
 export function Sidebar({
@@ -55,12 +57,14 @@ export function Sidebar({
   exporting,
   rooms,
   paths,
+  verificationMode,
   onAddRoom,
   onChangeBackground,
   onExport,
   onImport,
   onClear,
   onDownload,
+  onToggleVerification,
 }: SidebarProps) {
   const { t, lang, setLang, propTileLabel } = useI18n();
 
@@ -103,6 +107,14 @@ export function Sidebar({
           <button className="sidebar-btn sidebar-btn-danger" onClick={onClear}>
             <span className="sidebar-btn-icon">🗑</span>
             {t.clearGameBoard}
+          </button>
+          <div className="sidebar-sep" />
+          <button
+            className={`sidebar-btn${verificationMode ? ' sidebar-btn-verification-active' : ''}`}
+            onClick={onToggleVerification}
+          >
+            <span className="sidebar-btn-icon">🔍</span>
+            {t.verificationMode}
           </button>
           <div className="sidebar-sep" />
           <button

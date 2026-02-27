@@ -1,5 +1,8 @@
 import { forwardRef, useEffect, useState, useRef, useCallback } from 'react';
-import { RoomData, PathConnection, GAME_BOARD_WIDTH, GAME_BOARD_HEIGHT } from '../types';
+import {
+  RoomData, PathConnection, GAME_BOARD_WIDTH, GAME_BOARD_HEIGHT,
+  ROOM_WIDTH, ROOM_HEIGHT_SMALL, ROOM_HEIGHT_LARGE,
+} from '../types';
 import { useI18n } from '../i18n';
 import { RoomTile } from './LocationTile';
 import { PathOverlay } from './PathOverlay';
@@ -11,6 +14,9 @@ interface GameBoardViewProps {
   connectingFrom: string | null;
   editingNameId: string | null;
   draggingId: string | null;
+  verificationMode: boolean;
+  verificationDistances: Record<string, number>;
+  verificationSourceRoom: string | null;
   onGameBoardContextMenu: (screenX: number, screenY: number, boardX: number, boardY: number) => void;
   onGameBoardClick: (screenX: number, screenY: number, boardX: number, boardY: number) => void;
   onRoomContextMenu: (screenX: number, screenY: number, roomId: string) => void;
@@ -22,9 +28,7 @@ interface GameBoardViewProps {
   onNameChange: (roomId: string, name: string) => void;
   onNameBlur: () => void;
   onRoomClick: (roomId: string, e: React.MouseEvent) => void;
-  /** Expose the scale so parent can convert coordinates */
   scaleRef: React.MutableRefObject<number>;
-  /** Expose the game board container rect getter */
   getGameBoardRect: React.MutableRefObject<(() => DOMRect | null) | null>;
 }
 
@@ -37,6 +41,9 @@ export const GameBoardView = forwardRef<HTMLDivElement, GameBoardViewProps>(
       connectingFrom,
       editingNameId,
       draggingId,
+      verificationMode,
+      verificationDistances,
+      verificationSourceRoom,
       onGameBoardContextMenu,
       onGameBoardClick,
       onRoomContextMenu,
@@ -123,7 +130,7 @@ export const GameBoardView = forwardRef<HTMLDivElement, GameBoardViewProps>(
           }}
         >
           <div
-            className={`game-board-container${connectingFrom ? ' connecting' : ''}`}
+            className={`game-board-container${connectingFrom ? ' connecting' : ''}${verificationMode ? ' verification-active' : ''}`}
             ref={(node) => {
               // Merge refs
               (innerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
@@ -179,12 +186,39 @@ export const GameBoardView = forwardRef<HTMLDivElement, GameBoardViewProps>(
                 onNameChange={(name) => onNameChange(room.id, name)}
                 onNameBlur={onNameBlur}
                 onRoomClick={
-                  connectingFrom
+                  (connectingFrom || verificationMode)
                     ? (e) => onRoomClick(room.id, e)
                     : undefined
                 }
               />
             ))}
+            {/* Verification distance overlays */}
+            {verificationMode && verificationSourceRoom && rooms.map((room) => {
+              const isSource = room.id === verificationSourceRoom;
+              const dist = verificationDistances[room.id];
+              const unreachable = dist === undefined && !isSource;
+              const roomHeight = room.size === 'large' ? ROOM_HEIGHT_LARGE : ROOM_HEIGHT_SMALL;
+              return (
+                <div
+                  key={`vdist-${room.id}`}
+                  className={`verification-overlay${isSource ? ' verification-source' : ''}${unreachable ? ' verification-unreachable' : ''}`}
+                  style={{
+                    left: room.x,
+                    top: room.y,
+                    width: ROOM_WIDTH,
+                    height: roomHeight,
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRoomClick(room.id, e);
+                  }}
+                >
+                  <span className="verification-distance">
+                    {isSource ? '0' : unreachable ? '✕' : dist}
+                  </span>
+                </div>
+              );
+            })}
             {/* Author credits */}
             <div className="game-board-credits">
               Patryk Średziński

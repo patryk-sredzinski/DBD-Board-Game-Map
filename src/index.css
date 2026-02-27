@@ -1341,6 +1341,100 @@ body {
   object-fit: contain;
 }
 
+/* ======== Verification Mode ======== */
+
+.verification-active {
+  cursor: crosshair;
+}
+
+.verification-active .room-tile {
+  cursor: crosshair;
+}
+
+.verification-overlay {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 15, 0.78);
+  border-radius: 6px;
+  pointer-events: all;
+  cursor: crosshair;
+  transition: background 0.15s;
+}
+
+.verification-overlay:hover {
+  background: rgba(10, 10, 15, 0.6);
+}
+
+.verification-source {
+  background: rgba(201, 168, 76, 0.25);
+  box-shadow: inset 0 0 0 3px rgba(201, 168, 76, 0.6);
+}
+
+.verification-source:hover {
+  background: rgba(201, 168, 76, 0.18);
+}
+
+.verification-unreachable {
+  background: rgba(180, 40, 40, 0.5);
+}
+
+.verification-unreachable:hover {
+  background: rgba(180, 40, 40, 0.35);
+}
+
+.verification-distance {
+  font-family: 'Kanit', sans-serif;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.8), 0 1px 3px rgba(0, 0, 0, 0.9);
+  line-height: 1;
+  font-size: 200px;
+}
+
+.verification-source .verification-distance {
+  color: #c9a84c;
+}
+
+.verification-unreachable .verification-distance {
+  color: #cc4444;
+  font-size: 160px;
+}
+
+.verification-hint-banner {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: rgba(20, 20, 30, 0.92);
+  border: 1px solid #c9a84c;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  color: #c9a84c;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  animation: modalAppear 0.2s ease-out;
+  pointer-events: none;
+}
+
+/* Active state for verification toggle button in sidebar */
+.sidebar-btn-verification-active {
+  background: rgba(201, 168, 76, 0.1);
+  border-color: rgba(201, 168, 76, 0.4);
+  color: #c9a84c;
+}
+
+.sidebar-btn-verification-active:hover:not(:disabled) {
+  background: rgba(201, 168, 76, 0.15);
+  border-color: rgba(201, 168, 76, 0.5);
+  color: #d4b55a;
+}
+
 /* ======== Scrollbar ======== */
 
 ::-webkit-scrollbar {
